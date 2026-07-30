@@ -36,3 +36,32 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+
+# deploy:
+#     needs: build
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Deploy to Ubuntu VM
+#         uses: appleboy/ssh-action@v1.2.0
+#         with:
+#           host: ${{ secrets.VM_HOST }}
+#           username: ${{ secrets.VM_USERNAME }}
+#           key: ${{ secrets.VM_SSH_KEY }}
+#           script: |
+#             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+
+#             docker stop hawker-app || true
+#             docker rm hawker-app || true
+
+#             docker run -d \
+#               --name hawker-app \
+#               --restart unless-stopped \
+#               -p 80:5000 \
+#               ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+
+#remember to install docker on the ubuntu vm before running deploy 
+# sudo apt update
+# sudo apt install docker.io -y
+# sudo systemctl enable docker
+# sudo systemctl start docker
