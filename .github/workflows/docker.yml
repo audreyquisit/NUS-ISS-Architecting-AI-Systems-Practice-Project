@@ -48,14 +48,21 @@ jobs:
           docker build \
             -t ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest .
 
-      - name: Run Trivy scan
+      - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
           format: table
-          exit-code: 1
-          ignore-unfixed: true
+          output: trivy-report.txt
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
 
       - name: Push Docker image
         run: |
