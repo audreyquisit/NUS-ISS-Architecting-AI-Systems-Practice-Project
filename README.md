@@ -23,6 +23,34 @@ This project is developed as part of the **Practice Module for the Certificate i
 
 ---
 
+# Tech Stack
+
+- Frontend: Flask (`frontend/app.py`) with a simple Python web app and routing.
+- Backend: Flask API (`backend/main.py`) with Pydantic validation for request/response models.
+- Containerization: Dockerfiles for frontend and backend services.
+
+## Run the project
+
+### Frontend
+
+```bash
+cd frontend
+python app.py
+```
+
+The frontend currently exposes a simple Flask app on port `5000`.
+
+### Backend
+
+```bash
+cd backend
+python main.py
+```
+
+The backend exposes the API on port `8000` and includes `GET /health`, `GET /api/stalls`, and `POST /api/recommendation`.
+
+---
+
 # Problem Statement
 
 Choosing where to eat at a hawker centre often requires users to consult several disconnected sources for:
