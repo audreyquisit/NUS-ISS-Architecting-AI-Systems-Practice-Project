@@ -7,7 +7,8 @@ A simple Flask backend scaffold for the Smart Hawker AI project.
 1. Create and activate a Python environment
    ```bash
    python -m venv .venv
-   source .venv/bin/activate
+   source .venv/bin/activate (macOS/Linux)
+   .venv\Scripts\Activate.ps1 (Windows) 
    ```
 2. Install dependencies
    ```bash
