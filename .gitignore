@@ -1,0 +1,15 @@
+backend/.env
+.vscode/settings.json
+backend/__pycache__/schemas.cpython-313.pyc
+backend/__pycache__/services.cpython-313.pyc
+backend/agents/__pycache__/budget_agent.cpython-313.pyc
+backend/agents/__pycache__/dietary_agent.cpython-313.pyc
+backend/agents/__pycache__/location_agent.cpython-313.pyc
+backend/agents/__pycache__/orchestrator.cpython-313.pyc
+backend/agents/__pycache__/queue_agent.cpython-313.pyc
+backend/agents/__pycache__/recommendation_agent.cpython-313.pyc
+backend/agents/__pycache__/weather_agent.cpython-313.pyc
+backend/services/__pycache__/__init__.cpython-313.pyc
+backend/services/__pycache__/hawker_service.cpython-313.pyc
+backend/services/__pycache__/queue_service.cpython-313.pyc
+backend/services/__pycache__/weather_service.cpython-313.pyc

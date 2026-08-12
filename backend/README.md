@@ -14,11 +14,24 @@ A simple Flask backend scaffold for the Smart Hawker AI project.
    ```bash
    pip install -r requirements.txt
    ```
-3. Start the backend
+3. Update your OpenAI API Key
+
+
+   Create file .env under backend directory as such
+   ```bash
+   OPENAI_API_KEY=[your-secret-key]
+   ```
+   *Note: do not push your .env file
+
+   
+4. Start the backend
    ```bash
    python main.py
    ```
-
+5. Interacting with the agents - if you'd like to test out the agents alone.
+   ```bash
+   python terminal.py
+   ```
 ## Endpoints
 
 - `GET /health` - health check

@@ -1,4 +1,4 @@
-from .schemas import StallRecommendation, UserPreferences
+from schemas import StallRecommendation, UserPreferences
 
 
 def generate_recommendation(preferences: UserPreferences) -> StallRecommendation:

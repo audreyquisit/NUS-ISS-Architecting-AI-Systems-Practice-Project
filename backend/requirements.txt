@@ -1,2 +1,7 @@
 Flask==3.1.0
 pydantic==2.8.0
+langchain
+langchain-openai
+langgraph
+pydantic
+python-dotenv
