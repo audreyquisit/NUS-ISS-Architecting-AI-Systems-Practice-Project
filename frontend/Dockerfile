@@ -8,7 +8,7 @@ WORKDIR /app
 COPY frontend/requirements.txt .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r frontend/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 #Copy app files
 COPY . .
