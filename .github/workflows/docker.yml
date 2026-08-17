@@ -51,8 +51,15 @@ jobs:
           pip install -r frontend/requirements.txt
           pip install flake8
 
-      - name: Run Flake8
-        run: flake8 .
+      # - name: Run Flake8
+      #   run: flake8 .
+      - name: Run Backend Flake8
+        run: |
+          flake8 backend --count --statistics
+
+      - name: Run Frontend Flake8
+        run: |
+          flake8 frontend --count --statistics
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
