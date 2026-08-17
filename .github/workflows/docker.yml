@@ -33,14 +33,14 @@ jobs:
 
       - name: Build backend Docker image
         run: | 
-          docker build -t NUS-ISS-Architecting-AI-Systems-Practice-Project ./backend    
+          docker build -t nus-iss-architecting-ai-systems-practice-project ./backend    
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install flake8
 
       - name: Build frontend Docker image
         run: | 
-          docker build -t NUS-ISS-Architecting-AI-Systems-Practice-Project ./frontend    
+          docker build -t nus-iss-architecting-ai-systems-practice-project ./frontend    
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install flake8
