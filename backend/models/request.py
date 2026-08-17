@@ -9,3 +9,4 @@ class HawkerRequest(BaseModel):
     budget: float
     available_time_minutes: int
     weather: Optional[str] = None
+    

@@ -23,8 +23,7 @@ def verify_location_result(
         if distance is None:
             continue
 
-        # Reject candidates that take longer than
-        # the user's available time.
+        # Reject candidates that take longer than the user's available time.
 
         if max_time is not None and distance > max_time:
             continue
@@ -56,8 +55,7 @@ def verify_budget_result(
         if price is None:
             continue
 
-        # Do not allow the recommendation agent
-        # to receive candidates that exceed the budget.
+        # Do not allow the recommendation agent to receive candidates that exceed the budget.
 
         if price <= budget:
             verified_candidates.append(candidate)
@@ -78,8 +76,7 @@ def verify_dietary_result(
         "dietary_preference"
     )
 
-    # If no dietary requirement was provided,
-    # there is nothing to verify.
+    # If no dietary requirement was provided, there is nothing to verify.
 
     if not dietary_preference:
         return {
@@ -126,8 +123,7 @@ def verify_queue_result(
         if queue_minutes is None:
             continue
 
-        # A queue longer than the available time
-        # should not be recommended.
+        # A queue longer than the available time should not be recommended.
 
         if queue_minutes <= available_time:
             verified_candidates.append(candidate)
@@ -148,8 +144,7 @@ def verify_weather_result(
         "weather"
     )
 
-    # Weather information should exist before
-    # allowing the recommendation agent to use it.
+    # Weather information should exist before allowing the recommendation agent to use it.
 
     if not weather:
         return {
@@ -221,8 +216,7 @@ def verify_results(
 
         else:
 
-            # Unknown agent results should not
-            # automatically be trusted.
+            # Unknown agent results should notautomatically be trusted.
 
             verified = {
                 "agent": agent,
