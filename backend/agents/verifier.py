@@ -1,9 +1,7 @@
 from typing import List, Dict, Any
 
 
-# ============================================================
 # Verification helpers
-# ============================================================
 
 def verify_location_result(
     result: Dict[str, Any],
@@ -167,9 +165,7 @@ def verify_weather_result(
     }
 
 
-# ============================================================
 # Main verifier
-# ============================================================
 
 def verify_results(
     agent_results: List[Dict[str, Any]],

@@ -11,9 +11,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.types import Send
 
 ## https://github.com/SauravP97/AI-Engineering-101/blob/main/orchestrator-worker-design-pattern/agent.ipynb
-# ============================================================
 # Structured output
-# ============================================================
 
 class AgentTask(BaseModel):
 
@@ -33,10 +31,7 @@ class AgentTasks(BaseModel):
     )
 
 
-# ============================================================
 # Shared State
-# ============================================================
-
 class SharedState(TypedDict):
 
     user_request: str
@@ -53,10 +48,7 @@ class SharedState(TypedDict):
     final_recommendation: str
 
 
-# ============================================================
 # Worker State
-# ============================================================
-
 class WorkerState(TypedDict):
 
     task: AgentTask
@@ -69,10 +61,7 @@ class WorkerState(TypedDict):
     ]
 
 
-# ============================================================
 # Build Model
-# ============================================================
-
 def build_model(shared_state: SharedState) -> SharedState:
 
     import os
@@ -87,9 +76,7 @@ def build_model(shared_state: SharedState) -> SharedState:
     return shared_state
 
 
-# ============================================================
 # Orchestrator
-# ============================================================
 
 def orchestrator(shared_state: SharedState) -> SharedState:
 
@@ -153,9 +140,7 @@ def orchestrator(shared_state: SharedState) -> SharedState:
     return shared_state
 
 
-# ============================================================
 # Spawn Workers
-# ============================================================
 
 def spawn_workers(shared_state: SharedState):
 
@@ -171,9 +156,7 @@ def spawn_workers(shared_state: SharedState):
     ]
 
 
-# ============================================================
 # Worker
-# ============================================================
 
 def worker(worker_state: WorkerState):
 
@@ -225,9 +208,7 @@ def worker(worker_state: WorkerState):
     }
 
 
-# ============================================================
 # Synthesizer
-# ============================================================
 
 def synthesizer(shared_state: SharedState):
 
@@ -243,9 +224,7 @@ def synthesizer(shared_state: SharedState):
     }
 
 
-# ============================================================
 # Build Workflow
-# ============================================================
 
 def build_workflow():
 
