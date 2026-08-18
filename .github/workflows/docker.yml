@@ -73,19 +73,28 @@ jobs:
       #   run: |
       #     docker build \
       #       -t ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest .
+
+      - name: Check files backend
+        run: |
+          pwd
+          ls -la
+          ls -la backend
+          find . -name Dockerfile -o -name requirements.txt
+
+      - name: Check files frontend
+        run: |
+          pwd
+          ls -la
+          ls -la frontend
+          find . -name Dockerfile -o -name requirements.txt
+
       - name: Build Backend Docker image
         run: |
-          docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest \
-            -f backend/Dockerfile \ 
-            backend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest -f backend/Dockerfile backend
 
       - name: Build Frontend Docker image
         run: |
-          docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest \
-            -f frontend/Dockerfile \
-            frontend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest -f frontend/Dockerfile frontend
 
       - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
