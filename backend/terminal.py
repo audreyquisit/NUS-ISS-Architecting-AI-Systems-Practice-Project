@@ -1,8 +1,9 @@
+import os
+from agents.orchestrator import build_workflow
 from dotenv import load_dotenv
 load_dotenv()
-from agents.orchestrator import build_workflow
-import os
 print("API key loaded:", bool(os.getenv("OPENAI_API_KEY")))
+
 
 def terminal():
     workflow = build_workflow()
@@ -36,4 +37,3 @@ def terminal():
 
 if __name__ == "__main__":
     terminal()
-    

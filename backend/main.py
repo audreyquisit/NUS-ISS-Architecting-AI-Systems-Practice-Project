@@ -28,7 +28,10 @@ def list_stalls():
             cuisine="Chinese",
             price_range="Low",
             score=0.92,
-            explanation="Popular choice for budget-friendly noodles and fast service.",
+            explanation=(
+                "Popular choice for budget-friendly noodles and fast "
+                "service."
+            ),
         ),
         StallRecommendation(
             stall_name="Vegetarian Delight",
@@ -36,7 +39,10 @@ def list_stalls():
             cuisine="Vegetarian",
             price_range="Medium",
             score=0.88,
-            explanation="Good option for dietary preferences and low queue risk.",
+            explanation=(
+                "Good option for dietary preferences and low queue "
+                "risk."
+            ),
         ),
     ]
     return jsonify([stall.model_dump() for stall in stalls])

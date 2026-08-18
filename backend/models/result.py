@@ -23,4 +23,3 @@ class AgentResult(BaseModel):
     reasoning: Optional[str] = None
 
     verified: bool = False
-    
