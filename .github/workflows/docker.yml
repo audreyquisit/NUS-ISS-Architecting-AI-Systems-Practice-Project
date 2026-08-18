@@ -10,7 +10,6 @@ on:
 
 jobs:
   docker:
-
     runs-on: ubuntu-latest
 
     permissions:
@@ -70,10 +69,21 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build Docker image
+      # - name: Build Docker image
+      #   run: |
+      #     docker build \
+      #       -t ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest .
+      - name: Build Backend Docker image
         run: |
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest .
+            -t ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest \
+            -f backend/Dockerfile .
+
+      - name: Build Frontend Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest \
+            -f frontend/Dockerfile .
 
       - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
@@ -118,7 +128,7 @@ jobs:
 #               -p 80:5000 \
 #               ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
 
-#remember to install docker on the ubuntu vm before running deploy 
+#remember to install docker on the ubuntu vm before running deploy
 # sudo apt update
 # sudo apt install docker.io -y
 # sudo systemctl enable docker
