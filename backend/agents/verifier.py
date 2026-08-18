@@ -55,7 +55,8 @@ def verify_budget_result(
         if price is None:
             continue
 
-        # Do not allow the recommendation agent to receive candidates that exceed the budget.
+        # Do not allow candidates exceeding the budget
+        # to reach the recommendation agent.
 
         if price <= budget:
             verified_candidates.append(candidate)
@@ -144,7 +145,8 @@ def verify_weather_result(
         "weather"
     )
 
-    # Weather information should exist before allowing the recommendation agent to use it.
+    # Weather information should exist before allowing the
+    # recommendation agent to use it.
 
     if not weather:
         return {

@@ -3,11 +3,11 @@ from typing import List, Optional
 
 
 class UserPreferences(BaseModel):
-    location: str = Field(...,
-                          description="Preferred location or hawker centre")
+    location: str = Field(
+        ..., description="Preferred location or hawker centre")
     dietary_preferences: Optional[List[str]] = Field(default_factory=list)
-    budget: str = Field(...,
-                        description="Budget category such as low, medium, or high")
+    budget: str = Field(
+        ..., description="Budget category: low, medium, or high")
     available_time_min: int = Field(..., ge=0,
                                     description="Available time in minutes")
     weather: Optional[str] = Field(
