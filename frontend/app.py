@@ -22,10 +22,11 @@ def chat():
         return jsonify({"error": "Message is required."}), 400
 
     # Mock reply so the frontend is usable before backend endpoints exist.
-    # Replace the body below with a requests.post(BACKEND_URL + "/api/recommendation", ...)
+    # Replace the body below with a requests.post call to backend API
     mock_reply = (
-        "Thanks for your message! The backend AI endpoints are not wired up yet. "
-        "Once ready, this will return real hawker stall recommendations based on your preferences."
+        "Thanks for your message! The backend AI endpoints are not wired up "
+        "yet. Once ready, this will return real hawker stall recommendations "
+        "based on your preferences."
     )
 
     return jsonify({"reply": mock_reply})
