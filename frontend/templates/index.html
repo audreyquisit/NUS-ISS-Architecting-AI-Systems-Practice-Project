@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Hawker AI Chatbot</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #0f172a;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .message {
+      max-width: 78%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      line-height: 1.5;
+      font-size: 14.5px;
+      word-wrap: break-word;
+      animation: fadeIn 0.18s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #0f172a;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: #f3f4f6;
+      color: #111827;
+      border-bottom-left-radius: 4px;
+    }
+
+    .input-row {
+      padding: 16px 24px 20px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-row input {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      font-size: 14.5px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .input-row input:focus {
+      border-color: #0f172a;
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    }
+
+    .input-row button {
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: none;
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.05s ease, opacity 0.15s ease;
+    }
+
+    .input-row button:hover {
+      opacity: 0.92;
+    }
+
+    .input-row button:active {
+      transform: scale(0.98);
+    }
+
+    .input-row button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .typing {
+      align-self: flex-start;
+      background: #f3f4f6;
+      color: #6b7280;
+      padding: 12px 16px;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      font-size: 13px;
+    }
+
+    .welcome {
+      align-self: center;
+      text-align: center;
+      color: #6b7280;
+      font-size: 13.5px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="header-icon">SH</div>
+      <div>
+        <div class="header-title">Smart Hawker AI</div>
+        <div class="header-subtitle">Tell me what you’re craving, your budget, and where you are.</div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome">Start a conversation to get hawker recommendations.</div>
+    </div>
+
+    <form class="input-row" id="chatForm" autocomplete="off">
+      <input
+        id="messageInput"
+        type="text"
+        placeholder="e.g., I want chicken rice under $5 near Tampines..."
+        required
+      />
+      <button type="submit" id="sendButton">Send</button>
+    </form>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById("messages");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+
+    function appendMessage(role, text) {
+      const el = document.createElement("div");
+      el.className = "message " + role;
+      el.textContent = text;
+      messagesEl.appendChild(el);
+      scrollToBottom();
+    }
+
+    function showTyping() {
+      const el = document.createElement("div");
+      el.className = "typing";
+      el.id = "typingIndicator";
+      el.textContent = "Bot is typing...";
+      messagesEl.appendChild(el);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const el = document.getElementById("typingIndicator");
+      if (el) el.remove();
+    }
+
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage(message) {
+      appendMessage("user", message);
+      input.value = "";
+      sendButton.disabled = true;
+      showTyping();
+
+      try {
+        // TODO: Update endpoint/payload once the backend exposes the real chat/recommendation API.
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        hideTyping();
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          appendMessage("bot", "Sorry, something went wrong: " + (error.error || response.statusText));
+          return;
+        }
+
+        const data = await response.json();
+        appendMessage("bot", data.reply || "No reply received.");
+      } catch (err) {
+        hideTyping();
+        appendMessage("bot", "Network error. Please try again.");
+      } finally {
+        sendButton.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      sendMessage(message);
+    });
+  </script>
+</body>
+</html>

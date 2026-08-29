@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 
 from schemas import StallRecommendation, UserPreferences
-from services import generate_recommendation
+from recommendation_service import generate_recommendation
 
 app = Flask(__name__)
 
