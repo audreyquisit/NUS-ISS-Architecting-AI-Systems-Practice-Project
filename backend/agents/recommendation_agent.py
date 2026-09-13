@@ -32,7 +32,8 @@ def run(
         - Respect the user's budget.
         - Consider walking distance.
         - Consider available time.
-        - Consider queue length.
+        - Consider queue length and crowd conditions.
+        - Prefer lower queue_minutes and better queue_score when other factors are similar.
         - Consider weather.
         - Only recommend stalls that appear in the
           provided agent results.
