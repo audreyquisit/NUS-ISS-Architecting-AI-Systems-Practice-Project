@@ -1,11 +1,11 @@
-from services.queue_service import get_queue_estimates
+from services.live_queue_feed import get_live_queue_feed
 
 
 def run(task: str):
 
     print("Queue Agent")
 
-    queue_data = get_queue_estimates(task=task)
+    queue_data = get_live_queue_feed(task=task)
 
     return {
         "agent": "queue",
