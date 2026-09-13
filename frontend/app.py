@@ -1,10 +1,9 @@
 import os
+import requests
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# TODO: Replace mock response with real backend call once endpoints are ready.
-# Expected backend endpoint: POST http://localhost:8000/api/recommendation
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 
@@ -21,15 +20,17 @@ def chat():
     if not user_message:
         return jsonify({"error": "Message is required."}), 400
 
-    # Mock reply so the frontend is usable before backend endpoints exist.
-    # Replace the body below with a requests.post call to backend API
-    mock_reply = (
-        "Thanks for your message! The backend AI endpoints are not wired up "
-        "yet. Once ready, this will return real hawker stall recommendations "
-        "based on your preferences."
-    )
-
-    return jsonify({"reply": mock_reply})
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/api/chat",
+            json={"message": user_message},
+            timeout=60
+        )
+        response.raise_for_status()
+        data = response.json()
+        return jsonify({"reply": data.get("reply", "No recommendation returned.")})
+    except Exception as exc:
+        return jsonify({"error": f"Backend call failed: {str(exc)}"}), 500
 
 
 if __name__ == "__main__":

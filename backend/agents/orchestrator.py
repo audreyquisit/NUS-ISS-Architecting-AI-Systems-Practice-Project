@@ -1,8 +1,8 @@
-from typing import Annotated, List
+from typing import List
 import operator
 
 from pydantic import BaseModel, Field
-from typing_extensions import TypedDict
+from typing_extensions import Annotated, TypedDict
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -67,11 +67,21 @@ def build_model(shared_state: SharedState) -> SharedState:
 
     import os
 
-    print("API key available:", bool(os.getenv("OPENAI_API_KEY")))
+    load_dotenv = __import__("dotenv").load_dotenv
+    load_dotenv()
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    print("API key available:", bool(api_key))
+
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is missing. Add it to a backend .env file or export it in the shell before running the app."
+        )
 
     shared_state["model"] = ChatOpenAI(
         model="gpt-4o",
-        temperature=0
+        temperature=0,
+        api_key=api_key
     )
 
     return shared_state

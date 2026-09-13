@@ -1,5 +1,11 @@
+import os
+
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+load_dotenv()
+
+from agents.orchestrator import build_workflow
 from schemas import StallRecommendation, UserPreferences
 from recommendation_service import generate_recommendation
 
@@ -9,6 +15,26 @@ app = Flask(__name__)
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    payload = request.get_json(silent=True) or {}
+    message = (payload.get("message") or "").strip()
+
+    if not message:
+        return jsonify({"error": "Message is required."}), 400
+
+    workflow = build_workflow()
+    result = workflow.invoke({
+        "user_request": message,
+        "tasks": [],
+        "agent_results": [],
+        "final_recommendation": ""
+    })
+
+    final_reply = result.get("final_recommendation", "")
+    return jsonify({"reply": final_reply})
 
 
 @app.route("/api/recommendation", methods=["POST"])
