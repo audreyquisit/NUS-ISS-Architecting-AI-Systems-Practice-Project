@@ -114,6 +114,9 @@ def verify_queue_result(
     available_time = user_request.get(
         "available_time_minutes"
     )
+    max_queue = user_request.get(
+        "max_queue"
+    )
 
     for candidate in result.get("candidates", []):
 
@@ -124,10 +127,16 @@ def verify_queue_result(
         if queue_minutes is None:
             continue
 
-        # A queue longer than the available time should not be recommended.
+        # A queue longer than the user's available time should not be
+        # recommended, and a queue above the acceptable max queue should
+        # also be filtered out.
+        if available_time is not None and queue_minutes > available_time:
+            continue
 
-        if queue_minutes <= available_time:
-            verified_candidates.append(candidate)
+        if max_queue is not None and queue_minutes > max_queue:
+            continue
+
+        verified_candidates.append(candidate)
 
     return {
         "agent": "queue",
@@ -202,7 +211,7 @@ def verify_results(
                 user_request
             )
 
-        elif agent == "queue":
+        elif agent in ("queue", "crowd"):
 
             verified = verify_queue_result(
                 result,

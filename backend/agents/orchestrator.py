@@ -112,7 +112,11 @@ def orchestrator(shared_state: SharedState) -> SharedState:
         4. queue
            Estimates queue and waiting time.
 
-        5. weather
+        5. crowd
+           Estimates how crowded a hawker stall is and how long
+           the user may need to wait.
+
+        6. weather
            Determines whether weather affects the suitability
            of the recommendation.
 
@@ -185,7 +189,7 @@ def worker(worker_state: WorkerState):
 
         result = run(task.task)
 
-    elif task.agent == "queue":
+    elif task.agent in ("queue", "crowd"):
 
         from agents.queue_agent import run
 

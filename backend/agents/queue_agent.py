@@ -5,7 +5,7 @@ def run(task: str):
 
     print("Queue Agent")
 
-    queue_data = get_queue_estimates()
+    queue_data = get_queue_estimates(task=task)
 
     return {
         "agent": "queue",
