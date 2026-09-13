@@ -1,7 +1,9 @@
 backend/.env
 backend/.venv/
 backend/venv/
+backend/.venvsource/
 .venv/
+.venvsource/
 venv/
 .vscode/
 __pycache__/
