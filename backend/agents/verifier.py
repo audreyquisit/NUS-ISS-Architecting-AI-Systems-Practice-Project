@@ -73,13 +73,13 @@ def verify_dietary_result(
     user_request: Dict[str, Any]
 ) -> Dict[str, Any]:
 
-    dietary_preference = user_request.get(
-        "dietary_preference"
-    )
+    dietary_preference = user_request.get("dietary_preference")
+    dietary_preferences = user_request.get("dietary_preferences") or []
+    has_constraints = bool(dietary_preference or dietary_preferences)
 
     # If no dietary requirement was provided, there is nothing to verify.
 
-    if not dietary_preference:
+    if not has_constraints:
         return {
             "agent": "dietary",
             "verified": True,
@@ -93,6 +93,17 @@ def verify_dietary_result(
         dietary_suitable = candidate.get(
             "dietary_suitable"
         )
+        preference_score = candidate.get("preference_score")
+        has_name = bool(candidate.get("stall_name"))
+
+        if not has_name:
+            continue
+
+        if dietary_suitable is not True:
+            continue
+
+        if preference_score is not None and preference_score < 0.1:
+            continue
 
         if dietary_suitable is True:
             verified_candidates.append(candidate)

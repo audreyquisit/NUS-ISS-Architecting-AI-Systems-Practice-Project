@@ -55,6 +55,7 @@ class WorkerState(TypedDict):
     task: AgentTask
 
     model: ChatOpenAI
+    user_request: str
 
     agent_results: Annotated[
         List[dict],
@@ -164,7 +165,8 @@ def spawn_workers(shared_state: SharedState):
             "worker",
             {
                 "task": task,
-                "model": shared_state["model"]
+                "model": shared_state["model"],
+                "user_request": shared_state["user_request"],
             }
         )
         for task in shared_state["tasks"]
@@ -191,7 +193,10 @@ def worker(worker_state: WorkerState):
 
         from agents.dietary_agent import run
 
-        result = run(task.task)
+        result = run(
+            task.task,
+            user_request=worker_state.get("user_request"),
+        )
 
     elif task.agent == "budget":
 
