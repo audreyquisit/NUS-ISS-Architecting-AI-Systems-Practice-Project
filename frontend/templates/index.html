@@ -78,6 +78,7 @@
       line-height: 1.5;
       font-size: 14.5px;
       word-wrap: break-word;
+      white-space: pre-wrap;
       animation: fadeIn 0.18s ease;
     }
 
@@ -203,11 +204,16 @@
     const form = document.getElementById("chatForm");
     const input = document.getElementById("messageInput");
     const sendButton = document.getElementById("sendButton");
+    const conversationTurns = [];
+    let conversationState = {};
+    let locationPermissionDeclined = false;
 
     function appendMessage(role, text) {
       const el = document.createElement("div");
       el.className = "message " + role;
-      el.textContent = text;
+      // Chat is rendered as text for safety; strip bold markers because the
+      // recommendation model is instructed to use plain text, not Markdown.
+      el.textContent = role === "bot" ? text.replace(/\*\*/g, "") : text;
       messagesEl.appendChild(el);
       scrollToBottom();
     }
@@ -230,6 +236,20 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
+    function getCurrentLocation() {
+      if (!navigator.geolocation) return Promise.resolve(null);
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        );
+      });
+    }
+
     async function sendMessage(message) {
       appendMessage("user", message);
       input.value = "";
@@ -237,25 +257,75 @@
       showTyping();
 
       try {
-        // TODO: Update endpoint/payload once the backend exposes the real chat/recommendation API.
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        const payload = {
+          message,
+          conversation_context: {
+            state: conversationState,
+            turns: conversationTurns.slice(-8),
           },
-          body: JSON.stringify({ message }),
+        };
+        const postChat = (body) => fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
         });
+        let response = await postChat(payload);
+        let data = await response.json().catch(() => ({}));
+
+        // Ask for browser location only when the message/session had no place.
+        if (response.status === 422 && (data.error || "").startsWith("I need a starting point")
+            && !locationPermissionDeclined) {
+          const userLocation = await getCurrentLocation();
+          if (userLocation) {
+            payload.user_location = userLocation;
+            response = await postChat(payload);
+            data = await response.json().catch(() => ({}));
+          } else {
+            locationPermissionDeclined = true;
+          }
+        }
 
         hideTyping();
-
         if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          appendMessage("bot", "Sorry, something went wrong: " + (error.error || response.statusText));
+          const reply = data.error || "The location request could not be completed.";
+          appendMessage("bot", reply);
+          // Keep both sides of a clarification turn. Otherwise a typed place
+          // on the next turn cannot be connected to the original food request.
+          conversationTurns.push({ role: "user", content: message });
+          conversationTurns.push({ role: "assistant", content: reply });
           return;
         }
 
-        const data = await response.json();
         appendMessage("bot", data.reply || "No reply received.");
+        conversationTurns.push({ role: "user", content: message });
+        conversationTurns.push({ role: "assistant", content: data.reply || "" });
+        const locationData = data.location_data || {};
+        const parsedData = data.parsed_request || {};
+        const joinedResults = (data.verified_results || []).find(
+          (result) => result.agent === "candidate_join"
+        );
+        const newlyRecommendedIds = (joinedResults?.candidates || [])
+          .map((item) => item.menu_item_id)
+          .filter(Boolean);
+        conversationState = {
+          ...conversationState,
+          origin_label: locationData.origin_label || conversationState.origin_label,
+          origin_source: locationData.origin_source || conversationState.origin_source,
+          location_text: locationData.origin_source === "free_text_place"
+            ? (locationData.origin_label || conversationState.location_text)
+            : conversationState.location_text,
+          travel_mode: locationData.intent_interpretation?.travel_mode || conversationState.travel_mode,
+          max_travel_time_min: parsedData.max_travel_time_min ?? conversationState.max_travel_time_min,
+          priorities: parsedData.priorities?.length
+            ? parsedData.priorities
+            : conversationState.priorities,
+          location_result: locationData.selected_centres?.length
+            ? locationData
+            : conversationState.location_result,
+          previous_menu_item_ids: newlyRecommendedIds.length
+            ? newlyRecommendedIds
+            : conversationState.previous_menu_item_ids,
+        };
       } catch (err) {
         hideTyping();
         appendMessage("bot", "Network error. Please try again.");

@@ -1,253 +1,252 @@
-from typing import List, Dict, Any
+"""Programmatic checks applied to worker evidence before recommendation."""
+
+from typing import Any
+
+from services.location_service import load_hawker_centres
+from services.hawker_service import get_menu_item_record, get_menu_stall_record
 
 
-# Verification helpers
-
-def verify_location_result(
-    result: Dict[str, Any],
-    user_request: Dict[str, Any]
-) -> Dict[str, Any]:
-
-    verified_candidates = []
-
-    max_time = user_request.get(
-        "available_time_minutes"
-    )
-
-    for candidate in result.get("candidates", []):
-
-        distance = candidate.get(
-            "distance_minutes"
+def _verified_location(result: dict[str, Any]) -> dict[str, Any]:
+    payload = result.get("payload", result)
+    valid_ids = {item["id"] for item in load_hawker_centres()}
+    all_logistics = [
+        item for item in payload.get("logistics", [])
+        if isinstance(item, dict) and item.get("centre_id") in valid_ids
+    ]
+    route_by_id = {item["centre_id"]: item for item in all_logistics}
+    selected = [
+        item for item in payload.get("selected_centres", [])
+        if isinstance(item, dict)
+        if item.get("centre_id") in valid_ids
+    ]
+    selected_ids = {item["centre_id"] for item in selected}
+    logistics = [
+        item for item in payload.get("logistics", [])
+        if isinstance(item, dict)
+        if item.get("centre_id") in valid_ids
+        and item.get("centre_id") in selected_ids
+    ]
+    checked = {**payload, "selected_centres": selected, "logistics": logistics}
+    expansion = payload.get("search_expansion")
+    if isinstance(expansion, dict):
+        expansion = dict(expansion)
+        for key in ("initial_centres", "additional_centres", "farther_matches"):
+            summaries = expansion.get(key)
+            if not isinstance(summaries, list):
+                continue
+            valid_summaries = []
+            for summary in summaries:
+                if not isinstance(summary, dict):
+                    continue
+                centre_id = summary.get("centre_id")
+                route = route_by_id.get(centre_id)
+                if not route:
+                    continue
+                measured_minutes = (route.get("travel") or {}).get("total_duration_min")
+                if summary.get("travel_time_min") != measured_minutes:
+                    continue
+                valid_summaries.append(summary)
+            expansion[key] = valid_summaries
+        checked["search_expansion"] = expansion
+    removed = len(payload.get("selected_centres", [])) - len(selected)
+    checked["verified"] = removed == 0
+    checked["verification"] = "centre IDs checked against the NEA catalogue"
+    if removed:
+        checked.setdefault("limitations", []).append(
+            f"Removed {removed} centre(s) outside the NEA catalogue."
         )
-
-        if distance is None:
-            continue
-
-        # Reject candidates that take longer than the user's available time.
-
-        if max_time is not None and distance > max_time:
-            continue
-
-        verified_candidates.append(candidate)
-
     return {
-        "agent": "location",
-        "verified": True,
-        "candidates": verified_candidates
+        **result,
+        "payload": checked,
+        "candidates": [],
+        "verified": checked["verified"],
+        "verification": checked["verification"],
     }
 
 
-def verify_budget_result(
-    result: Dict[str, Any],
-    user_request: Dict[str, Any]
-) -> Dict[str, Any]:
-
-    verified_candidates = []
-
-    budget = user_request.get(
-        "budget"
-    )
-
-    for candidate in result.get("candidates", []):
-
-        price = candidate.get("price")
-
-        if price is None:
-            continue
-
-        # Do not allow candidates exceeding the budget
-        # to reach the recommendation agent.
-
-        if price <= budget:
-            verified_candidates.append(candidate)
-
-    return {
-        "agent": "budget",
-        "verified": True,
-        "candidates": verified_candidates
-    }
-
-
-def verify_dietary_result(
-    result: Dict[str, Any],
-    user_request: Dict[str, Any]
-) -> Dict[str, Any]:
-
-    dietary_preference = user_request.get("dietary_preference")
-    dietary_preferences = user_request.get("dietary_preferences") or []
-    has_constraints = bool(dietary_preference or dietary_preferences)
-
-    # If no dietary requirement was provided, there is nothing to verify.
-
-    if not has_constraints:
+def _verify_worker_result(
+    result: dict[str, Any], request: dict[str, Any]
+) -> dict[str, Any]:
+    payload = result.get("payload", result)
+    agent = result.get("agent")
+    candidates = [
+        item for item in result.get("candidates", payload.get("candidates", []))
+        if isinstance(item, dict)
+    ]
+    if agent in {"dietary", "budget"}:
+        source_candidates = []
+        for candidate in candidates:
+            menu_item_id = candidate.get("menu_item_id")
+            source = get_menu_item_record(str(menu_item_id or ""))
+            if not source:
+                continue
+            if (
+                candidate.get("stall_id") != source.get("stall_id")
+                or candidate.get("hawker_centre_id") != source.get("hawker_centre_id")
+            ):
+                continue
+            # Keep source-owned identity, name, menu and price fields. Workers
+            # may add only their own matching explanation fields.
+            worker_fields = (
+                "matched_dietary_tags", "matched_cuisine", "preference_score",
+                "reason", "budget_limit_sgd", "budget_match",
+            )
+            source_candidates.append({
+                **source,
+                **{key: candidate[key] for key in worker_fields if key in candidate},
+            })
+        candidates = source_candidates
+    if agent == "dietary":
+        diets = request.get("dietary_preferences", [])
+        cuisines = [value.casefold() for value in request.get("cuisine_preferences", [])]
+        if diets:
+            candidates = [item for item in candidates if item.get("dietary_suitable") is True]
+        if cuisines:
+            candidates = [
+                item for item in candidates
+                if any(
+                    any(
+                        preference == category.casefold()
+                        or preference in category.casefold().split()
+                        for category in item.get("categories", [])
+                    )
+                    for preference in cuisines
+                )
+            ]
+    elif agent == "budget" and request.get("budget_amount") is not None:
+        limit = float(request["budget_amount"])
+        candidates = [
+            item for item in candidates
+            if item.get("price_sgd_min") is not None
+            and float(item["price_sgd_min"]) <= limit
+        ]
+    elif agent == "queue" and request.get("max_queue_min") is not None:
+        limit = int(request["max_queue_min"])
+        candidates = [
+            item for item in candidates
+            if item.get("stall_id")
+            and item.get("queue_minutes") is not None
+            and int(item["queue_minutes"]) <= limit
+        ]
+    if agent == "queue":
+        candidates = [
+            item for item in candidates
+            if item.get("stall_id") and get_menu_stall_record(item["stall_id"])
+        ]
+    elif agent == "weather" and not payload.get("weather"):
         return {
-            "agent": "dietary",
-            "verified": True,
-            "candidates": result.get("candidates", [])
-        }
-
-    verified_candidates = []
-
-    for candidate in result.get("candidates", []):
-
-        dietary_suitable = candidate.get(
-            "dietary_suitable"
-        )
-        preference_score = candidate.get("preference_score")
-        has_name = bool(candidate.get("stall_name"))
-
-        if not has_name:
-            continue
-
-        if dietary_suitable is not True:
-            continue
-
-        if preference_score is not None and preference_score < 0.1:
-            continue
-
-        if dietary_suitable is True:
-            verified_candidates.append(candidate)
-
-    return {
-        "agent": "dietary",
-        "verified": True,
-        "candidates": verified_candidates
-    }
-
-
-def verify_queue_result(
-    result: Dict[str, Any],
-    user_request: Dict[str, Any]
-) -> Dict[str, Any]:
-
-    verified_candidates = []
-
-    available_time = user_request.get(
-        "available_time_minutes"
-    )
-    max_queue = user_request.get(
-        "max_queue"
-    )
-
-    for candidate in result.get("candidates", []):
-
-        queue_minutes = candidate.get(
-            "queue_minutes"
-        )
-
-        if queue_minutes is None:
-            continue
-
-        # A queue longer than the user's available time should not be
-        # recommended, and a queue above the acceptable max queue should
-        # also be filtered out.
-        if available_time is not None and queue_minutes > available_time:
-            continue
-
-        if max_queue is not None and queue_minutes > max_queue:
-            continue
-
-        verified_candidates.append(candidate)
-
-    return {
-        "agent": "queue",
-        "verified": True,
-        "candidates": verified_candidates
-    }
-
-
-def verify_weather_result(
-    result: Dict[str, Any],
-    user_request: Dict[str, Any]
-) -> Dict[str, Any]:
-
-    weather = result.get(
-        "weather"
-    )
-
-    # Weather information should exist before allowing the
-    # recommendation agent to use it.
-
-    if not weather:
-        return {
-            "agent": "weather",
+            **result,
+            "payload": payload,
             "verified": False,
-            "reason": "No weather information available."
+            "status": "unavailable",
+            "limitations": ["No weather evidence was returned."],
         }
 
-    return {
-        "agent": "weather",
+    valid_candidates = [
+        item for item in candidates
+        if isinstance(item, dict) and item.get("stall_name")
+    ]
+    removed = len(candidates) - len(valid_candidates)
+    checked = {
+        **payload,
         "verified": True,
-        "weather": weather
+        "removed_candidate_count": removed,
+        "verification": "required fields and parsed hard constraints checked",
+    }
+    return {
+        **result,
+        "candidates": valid_candidates,
+        "verified": True,
+        "removed_candidate_count": removed,
+        "verification": checked["verification"],
+        "payload": checked,
     }
 
-
-# Main verifier
 
 def verify_results(
-    agent_results: List[Dict[str, Any]],
-    user_request: Dict[str, Any]
-) -> List[Dict[str, Any]]:
-    """
-    Verify results returned by specialised agents.
-
-    Invalid or unsupported candidates are removed before
-    the results are passed to the recommendation agent.
-    """
-
-    verified_results = []
-
+    agent_results: list[dict[str, Any]], parsed_request: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Check catalogue identity and hard user constraints before synthesis."""
+    verified = []
     for result in agent_results:
-
-        agent = result.get("agent")
-
-        if agent == "location":
-
-            verified = verify_location_result(
-                result,
-                user_request
-            )
-
-        elif agent == "dietary":
-
-            verified = verify_dietary_result(
-                result,
-                user_request
-            )
-
-        elif agent == "budget":
-
-            verified = verify_budget_result(
-                result,
-                user_request
-            )
-
-        elif agent in ("queue", "crowd"):
-
-            verified = verify_queue_result(
-                result,
-                user_request
-            )
-
-        elif agent == "weather":
-
-            verified = verify_weather_result(
-                result,
-                user_request
-            )
-
+        if not isinstance(result, dict):
+            continue
+        if result.get("agent") == "location":
+            verified.append(_verified_location(result))
+        elif result.get("agent") in {"dietary", "budget", "queue", "weather"}:
+            verified.append(_verify_worker_result(result, parsed_request))
         else:
-
-            # Unknown agent results should notautomatically be trusted.
-
-            verified = {
-                "agent": agent,
+            verified.append({
+                **result,
                 "verified": False,
-                "reason": "Unknown agent."
-            }
+                "status": "unavailable",
+                "verification": "unrecognized worker result",
+            })
+    stall_results = [
+        item for item in verified
+        if item.get("agent") in {"dietary", "budget"}
+        and item.get("verified")
+    ]
+    if stall_results:
+        candidate_maps = []
+        for result in stall_results:
+            candidates = {}
+            for candidate in result.get("candidates", []):
+                item_id = candidate.get("menu_item_id")
+                if item_id:
+                    candidates[item_id] = candidate
+            candidate_maps.append((result.get("agent"), candidates))
 
-        verified_results.append(
-            verified
+        common_keys = set(candidate_maps[0][1]) if candidate_maps else set()
+        for _, candidates in candidate_maps[1:]:
+            common_keys.intersection_update(candidates)
+        # Preserve the catalogue ordering rather than relying on set order.
+        ordered_keys = [
+            item.get("menu_item_id") for item in stall_results[0].get("candidates", [])
+            if item.get("menu_item_id") in common_keys
+        ]
+        queue_result = next(
+            (item for item in verified if item.get("agent") == "queue" and item.get("verified")),
+            None,
         )
-
-    return verified_results
+        queue_by_stall = {
+            item.get("stall_id"): item
+            for item in (queue_result or {}).get("candidates", [])
+            if item.get("stall_id")
+        }
+        max_queue = parsed_request.get("max_queue_min")
+        joined = []
+        for key in ordered_keys:
+            combined = {}
+            for agent, candidates in candidate_maps:
+                combined.update(candidates[key])
+            queue = queue_by_stall.get(combined.get("stall_id"))
+            if max_queue is not None and (
+                not queue
+                or queue.get("queue_minutes") is None
+                or int(queue["queue_minutes"]) > int(max_queue)
+            ):
+                continue
+            if queue:
+                combined.update({
+                    "queue_minutes": queue.get("queue_minutes"),
+                    "crowd_level": queue.get("crowd_level"),
+                    "queue_score": queue.get("queue_score"),
+                    "queue_source": queue.get("source"),
+                })
+            combined["supporting_agents"] = [agent for agent, _ in candidate_maps]
+            joined.append(combined)
+        joined = joined[:30]
+        joined_result = {
+            "agent": "candidate_join",
+            "verified": True,
+            "candidates": joined,
+            "limitations": (
+                [] if joined else [
+                    "No menu items remain after applying the verified catalogue and worker constraints."
+                ]
+            ),
+            "verification": "menu item IDs and centre IDs checked against the source-backed catalogue",
+        }
+        verified.append(joined_result)
+    return verified
