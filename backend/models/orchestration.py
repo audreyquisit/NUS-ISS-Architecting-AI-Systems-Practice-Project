@@ -10,7 +10,8 @@ WorkerName = Literal["location", "dietary", "budget", "queue", "weather"]
 
 class ParsedRequest(BaseModel):
     intent: Literal[
-        "food_discovery", "centre_details", "directions", "smalltalk", "other"
+        "food_discovery", "centre_details", "directions", "smalltalk", "other",
+        "queue",
     ]
     origin_text: Optional[str] = None
     target_centre_text: Optional[str] = None

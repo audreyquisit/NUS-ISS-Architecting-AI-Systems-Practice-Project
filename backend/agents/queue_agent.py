@@ -165,7 +165,6 @@ def _agentic_queue_plan(
             item["stall_id"] = get_menu_stall_id(
                 item.get("stall_name", ""), centre_id
             )
-            item["source"] = "mock_queue_feed"
             candidate_id = f"queue-{index}"
             item["_agent_candidate_id"] = candidate_id
             state["records"][candidate_id] = item
@@ -182,7 +181,9 @@ def _agentic_queue_plan(
                 "queue_minutes": item.get("queue_minutes"),
                 "crowd_level": item.get("crowd_level"),
                 "queue_score": item.get("queue_score"),
-                "source": "mock_queue_feed",
+                "source": item.get("source"),
+                "queue_is_mock": item.get("queue_is_mock", True),
+                "queue_mock_notice": item.get("queue_mock_notice"),
             }
             for item in records
         ], ensure_ascii=False)
@@ -228,7 +229,7 @@ def _agentic_queue_plan(
                 record["base_queue_minutes"] = record.get("queue_minutes")
                 record.update(estimate)
                 record["_agent_candidate_id"] = candidate_id
-                record["source"] = "mock_queue_estimate"
+                record["source"] = "synthetic_queue_mock"
         state["trace"].append({
             "tool": "estimate_queue_scenario",
             "candidate_count": len(selected_ids),
@@ -381,7 +382,6 @@ def run(
             item["stall_id"] = get_menu_stall_id(
                 item.get("stall_name", ""), item["hawker_centre_id"]
             )
-            item["source"] = "mock_queue_feed"
             item["_agent_candidate_id"] = f"queue-{index}"
         queue_trace.append({"tool": "deterministic_fallback_lookup"})
         agentic = False
@@ -479,8 +479,8 @@ def run(
         "confidence": assessment.confidence,
         "limitations": list(dict.fromkeys(limitations)),
         "evidence": [{
-            "source": "mock_queue_estimate" if any(
-                item.get("source") == "mock_queue_estimate" for item in ranked
+            "source": "synthetic_queue_mock" if any(
+                item.get("queue_is_mock") for item in ranked
             ) else "mock_queue_feed",
             "candidate_count": len(ranked),
             "queue_limit_minutes": queue_limit,

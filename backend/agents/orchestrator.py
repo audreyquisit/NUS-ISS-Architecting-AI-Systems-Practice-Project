@@ -67,6 +67,8 @@ def parse_request(state: SharedState) -> SharedState:
 Use only information in the current message and recent context. The current message
 is the active request; recent turns resolve references and preserve prior preferences.
 Do not invent an origin, budget, time limit, dietary restriction, or transport mode.
+`request.intent` describes the overall user goal, not a worker name. For queue or
+crowd requests, use `food_discovery` as the intent and include a `queue` worker task.
 Do not ask a confirmation question that merely repeats a clear request (for example,
 "Are you looking for chicken rice near AMK Hub?"). Treat a named place as usable
 origin context. Ask only when the request cannot be acted on after using recent turns;
@@ -97,7 +99,7 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
         "message": state.get("user_request", ""),
         "context": json.dumps(context, ensure_ascii=False),
     })
-    request = plan.request
+    request, queue_intent = _normalize_queue_intent(plan.request)
     allowed_sources = {
         "current_message", "conversation_context", "form_input", "inferred"
     }
@@ -143,7 +145,8 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     ):
         request.clarification_question = None
     tasks = _normalize_tasks(
-        plan.tasks, request, current_message, context
+        plan.tasks, request, current_message, context,
+        queue_requested=queue_intent,
     )
     return {
         "parsed_request": request.model_dump(),
@@ -151,11 +154,27 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
 
 
+def _normalize_queue_intent(request: ParsedRequest) -> tuple[ParsedRequest, bool]:
+    if request.intent != "queue":
+        return request, False
+    return request.model_copy(update={"intent": "food_discovery"}), True
+
+
+def _requests_queue_data(message: str) -> bool:
+    return bool(re.search(
+        r"\b(?:queues?|crowds?|crowded|waiting\s+times?|wait\s+times?)\b",
+        message,
+        re.IGNORECASE,
+    ))
+
+
 def _normalize_tasks(
     tasks: list[PlannedTask], parsed: ParsedRequest, message: str,
     conversation_context: Optional[dict] = None,
+    *, queue_requested: bool = False,
 ) -> list[PlannedTask]:
     """Enforce required worker calls from validated constraints and intent."""
+    queue_requested = queue_requested or _requests_queue_data(message)
     by_agent = {task.agent: task for task in tasks}
     session_state = (conversation_context or {}).get("state", {})
     cached_location = session_state.get("location_result") or {}
@@ -218,9 +237,13 @@ def _normalize_tasks(
         by_agent["budget"] = PlannedTask(
             agent="budget", task="Filter stalls by the user's stated budget."
         )
-    if parsed.max_queue_min is not None and "queue" not in by_agent:
+    if (queue_requested or parsed.max_queue_min is not None) and "queue" not in by_agent:
         by_agent["queue"] = PlannedTask(
-            agent="queue", task="Estimate queues and enforce the stated queue limit."
+            agent="queue",
+            task=(
+                "Assess mock queue and crowd evidence for the user's request, "
+                "applying any stated time period and queue limit."
+            ),
         )
     weather_terms = ("weather", "rain", "rainy", "outdoor", "wet")
     if any(term in message.casefold() for term in weather_terms) and "weather" not in by_agent:
@@ -719,6 +742,90 @@ def clarification_response(state: SharedState) -> dict[str, str]:
     return {"final_recommendation": question or "Could you clarify what you mean?"}
 
 
+def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) -> Optional[str]:
+    if not _requests_queue_data(user_request):
+        return None
+    queue_result = next((
+        item for item in verified
+        if item.get("agent") == "queue" and item.get("verified")
+    ), None)
+    if not queue_result:
+        return None
+
+    queue_candidates = [
+        item for item in queue_result.get("candidates", [])
+        if isinstance(item, dict) and item.get("queue_minutes") is not None
+    ]
+    if not queue_candidates:
+        return (
+            "I couldn't find queue estimates for the route-shortlisted centres. "
+            "The queue feed is simulated demo data, not a live service."
+        )
+
+    location = next((
+        item.get("payload", {}) for item in verified
+        if item.get("agent") == "location"
+    ), {})
+    selected = location.get("selected_centres", [])
+    selected_ids = [
+        item.get("centre_id") for item in selected
+        if isinstance(item, dict) and item.get("centre_id")
+    ]
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for candidate in queue_candidates:
+        centre_id = candidate.get("hawker_centre_id")
+        if selected_ids and centre_id not in selected_ids:
+            continue
+        grouped.setdefault(str(centre_id or candidate.get("hawker_centre") or ""), []).append(candidate)
+
+    if selected_ids:
+        ordered_groups = [
+            (centre_id, grouped[centre_id])
+            for centre_id in selected_ids if centre_id in grouped
+        ]
+    else:
+        ordered_groups = list(grouped.items())
+    if not ordered_groups:
+        return (
+            "I couldn't find queue estimates for the route-shortlisted centres. "
+            "The queue feed is simulated demo data, not a live service."
+        )
+
+    centre_names = {}
+    for rows in queue_candidates:
+        if rows.get("hawker_centre_id"):
+            centre_names[str(rows["hawker_centre_id"])] = rows.get("hawker_centre", "")
+
+    origin = location.get("origin_label")
+    heading = (
+        f"Queue and crowd estimates near {origin}:"
+        if origin else "Queue and crowd estimates for the nearby centres:"
+    )
+    summary_lines = [
+        "SIMULATED QUEUE DATA: These estimates are for demonstration only, not live conditions.",
+        "",
+        heading,
+    ]
+    for index, (centre_id, rows) in enumerate(ordered_groups[:3], start=1):
+        waits = [int(item["queue_minutes"]) for item in rows]
+        crowd_counts: dict[str, int] = {}
+        for item in rows:
+            crowd = str(item.get("crowd_level") or "Unspecified")
+            crowd_counts[crowd] = crowd_counts.get(crowd, 0) + 1
+        most_common_crowd = max(
+            crowd_counts,
+            key=lambda crowd: (crowd_counts[crowd], crowd),
+        )
+        name = centre_names.get(centre_id) or rows[0].get("hawker_centre") or centre_id
+        average_wait = round(sum(waits) / len(waits))
+        summary_lines.extend([
+            f"{index}. {name}",
+            f"   - Average estimated wait: about {average_wait} minutes across {len(rows)} stalls.",
+            f"   - Most common crowd level: {most_common_crowd}.",
+        ])
+    return "\n".join(summary_lines)
+
+
 def verify_results_node(state: SharedState) -> dict[str, Any]:
     from agents.verifier import verify_results
 
@@ -762,6 +869,11 @@ def synthesizer(state: SharedState) -> dict[str, str]:
             "can't confirm food options there. I haven't substituted other "
             f"centres for it.{nearby_offer} You can also name another centre."
         )}
+    queue_reply = _queue_status_response(
+        state.get("user_request", ""), verified
+    )
+    if queue_reply:
+        return {"final_recommendation": queue_reply}
     if parsed.get("intent") == "food_discovery":
         joined = next((
             item for item in verified

@@ -91,7 +91,7 @@ class QueueAgentTests(unittest.TestCase):
             item.get("tool") == "apply_queue_limit" for item in trace
         ))
         self.assertTrue(all(
-            item.get("source") == "mock_queue_estimate" for item in candidates
+            item.get("source") == "synthetic_queue_mock" for item in candidates
         ))
 
     @patch("agents.queue_agent.get_menu_stall_id", return_value="stall-id")
