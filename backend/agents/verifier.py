@@ -64,6 +64,79 @@ def _verified_location(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _verify_queue_candidates(
+    candidates: list[dict[str, Any]], request: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[str], bool]:
+    raw_limit = request.get("max_queue_min")
+    if raw_limit is not None and (
+        isinstance(raw_limit, bool)
+        or not isinstance(raw_limit, int)
+        or raw_limit < 0
+    ):
+        return [], [
+            "Queue candidates were rejected because max_queue_min must be a non-negative whole number."
+        ], False
+
+    verified = []
+    rejected_count = 0
+    crowd_for_wait = (
+        (5, "Low"),
+        (15, "Moderate"),
+        (25, "High"),
+    )
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            rejected_count += 1
+            continue
+        stall_id = candidate.get("stall_id")
+        source = get_menu_stall_record(str(stall_id or ""))
+        wait = candidate.get("queue_minutes")
+        queue_score = candidate.get("queue_score")
+        crowd = candidate.get("crowd_level")
+        if (
+            not source
+            or not source.get("hawker_centre_id")
+            or candidate.get("hawker_centre_id") != source.get("hawker_centre_id")
+            or candidate.get("queue_is_mock") is not True
+            or candidate.get("source") != "synthetic_queue_mock"
+            or not isinstance(candidate.get("queue_mock_notice"), str)
+            or "not a live" not in candidate["queue_mock_notice"].casefold()
+            or isinstance(wait, bool)
+            or not isinstance(wait, int)
+            or wait < 0
+            or isinstance(queue_score, bool)
+            or not isinstance(queue_score, int)
+            or not 0 <= queue_score <= 100
+        ):
+            rejected_count += 1
+            continue
+        expected_crowd = next(
+            (level for threshold, level in crowd_for_wait if wait <= threshold),
+            "Very High",
+        )
+        if crowd != expected_crowd:
+            rejected_count += 1
+            continue
+        if raw_limit is not None and wait > raw_limit:
+            rejected_count += 1
+            continue
+        verified.append({
+            **candidate,
+            "stall_id": source["stall_id"],
+            "stall_name": source["stall_name"],
+            "hawker_centre_id": source["hawker_centre_id"],
+            "hawker_centre": source["hawker_centre"],
+        })
+
+    limitations = []
+    if rejected_count:
+        limitations.append(
+            f"Rejected {rejected_count} queue candidate(s) with invalid source identity, "
+            "synthetic provenance, queue fields, or constraint values."
+        )
+    return verified, limitations, True
+
+
 def _verify_worker_result(
     result: dict[str, Any], request: dict[str, Any]
 ) -> dict[str, Any]:
@@ -120,19 +193,46 @@ def _verify_worker_result(
             if item.get("price_sgd_min") is not None
             and float(item["price_sgd_min"]) <= limit
         ]
-    elif agent == "queue" and request.get("max_queue_min") is not None:
-        limit = int(request["max_queue_min"])
-        candidates = [
-            item for item in candidates
-            if item.get("stall_id")
-            and item.get("queue_minutes") is not None
-            and int(item["queue_minutes"]) <= limit
-        ]
     if agent == "queue":
-        candidates = [
-            item for item in candidates
-            if item.get("stall_id") and get_menu_stall_record(item["stall_id"])
-        ]
+        submitted_count = len(candidates)
+        candidates, queue_limitations, valid_request = _verify_queue_candidates(
+            candidates, request
+        )
+        if not valid_request:
+            return {
+                **result,
+                "candidates": [],
+                "verified": False,
+                "status": "unavailable",
+                "confidence": 0.0,
+                "limitations": list(dict.fromkeys(
+                    result.get("limitations", []) + queue_limitations
+                )),
+                "verification": "queue request constraints failed validation",
+                "payload": payload,
+            }
+        verification = (
+            "stall and centre identity, simulated queue provenance, queue values, "
+            "and parsed hard limit checked"
+        )
+        confidence = (
+            round(len(candidates) / submitted_count, 2)
+            if submitted_count else 0.0
+        )
+        payload = {
+            **payload,
+            "confidence_basis": (
+                "Fraction of submitted queue records that passed source and constraint "
+                "checks; this is evidence completeness, not prediction accuracy."
+            ),
+        }
+        result = {
+            **result,
+            "limitations": list(dict.fromkeys(
+                result.get("limitations", []) + queue_limitations
+            )),
+            "confidence": confidence,
+        }
     elif agent == "weather" and not payload.get("weather"):
         return {
             **result,
@@ -146,12 +246,19 @@ def _verify_worker_result(
         item for item in candidates
         if isinstance(item, dict) and item.get("stall_name")
     ]
-    removed = len(candidates) - len(valid_candidates)
+    removed = (
+        submitted_count - len(valid_candidates)
+        if agent == "queue"
+        else len(candidates) - len(valid_candidates)
+    )
     checked = {
         **payload,
         "verified": True,
         "removed_candidate_count": removed,
-        "verification": "required fields and parsed hard constraints checked",
+        "verification": (
+            verification if agent == "queue"
+            else "required fields and parsed hard constraints checked"
+        ),
     }
     return {
         **result,
@@ -159,6 +266,7 @@ def _verify_worker_result(
         "verified": True,
         "removed_candidate_count": removed,
         "verification": checked["verification"],
+        "confidence": result.get("confidence", 0.5),
         "payload": checked,
     }
 

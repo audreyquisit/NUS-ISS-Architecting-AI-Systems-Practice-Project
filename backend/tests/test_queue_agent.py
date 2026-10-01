@@ -36,6 +36,22 @@ def _feed():
 
 
 class QueueAgentTests(unittest.TestCase):
+    @patch("agents.queue_agent._agentic_queue_plan")
+    def test_invalid_queue_limits_fail_closed_before_planning(self, planner):
+        for invalid_limit in (-1, 4.5, "10", True):
+            with self.subTest(queue_limit=invalid_limit):
+                result = run(
+                    "Find a short queue",
+                    parsed_request={"max_queue_min": invalid_limit},
+                )
+                self.assertEqual(result["candidates"], [])
+                self.assertEqual(result["confidence"], 0.0)
+                self.assertTrue(any(
+                    "non-negative whole number" in item
+                    for item in result["limitations"]
+                ))
+        planner.assert_not_called()
+
     @patch("agents.queue_agent.get_menu_stall_id", return_value="stall-id")
     @patch("agents.queue_agent.get_live_queue_feed", side_effect=lambda task: _feed())
     @patch("agents.queue_agent._llm")
