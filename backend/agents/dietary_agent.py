@@ -21,8 +21,6 @@ CUISINE_KEYWORDS = (
     "malay",
     "indian",
     "western",
-    "noodle",
-    "rice",
 )
 
 
@@ -41,6 +39,11 @@ def run(
     user_request: Optional[str] = None,
     dietary_preferences: Optional[list[str]] = None,
     cuisine_preferences: Optional[list[str]] = None,
+    menu_item_preferences: Optional[list[str]] = None,
+    stall_name_preferences: Optional[list[str]] = None,
+    excluded_menu_item_ids: Optional[list[str]] = None,
+    candidate_centres: Optional[list[str]] = None,
+    candidate_centre_ids: Optional[list[str]] = None,
 ):
     print("Dietary Agent")
 
@@ -62,8 +65,23 @@ def run(
     stalls = find_dietary_stalls(
         dietary_preferences=final_dietary,
         cuisine_preferences=final_cuisine,
+        menu_item_preferences=menu_item_preferences,
+        stall_name_preferences=stall_name_preferences,
+        excluded_menu_item_ids=excluded_menu_item_ids,
+        candidate_centres=candidate_centres,
+        candidate_centre_ids=candidate_centre_ids,
     )
 
+    limitations = []
+    if final_dietary:
+        limitations.append(
+            "The menu source has no ingredient, allergen, or certified dietary fields; "
+            "dietary suitability cannot be verified."
+        )
+    if candidate_centres and not stalls and not final_dietary:
+        limitations.append(
+            "No menu items matched the selected centres and dish or cuisine preferences."
+        )
     return {
         "agent": "dietary",
         "task": task,
@@ -72,4 +90,5 @@ def run(
             "cuisine": final_cuisine,
         },
         "candidates": stalls,
+        "limitations": limitations,
     }

@@ -23,15 +23,23 @@ def chat():
     try:
         response = requests.post(
             f"{BACKEND_URL}/api/chat",
-            json={"message": user_message},
-            timeout=60
+            json={
+                "message": user_message,
+                "user_location": payload.get("user_location"),
+                "conversation_context": payload.get("conversation_context", {}),
+            },
+            timeout=90,
         )
-        response.raise_for_status()
-        data = response.json()
-        return jsonify({"reply": data.get("reply", "No recommendation returned.")})
-    except Exception as exc:
-        return jsonify({"error": f"Backend call failed: {str(exc)}"}), 500
+        return (jsonify(response.json()), response.status_code)
+    except requests.RequestException as exc:
+        return jsonify({"error": f"Backend call failed: {exc}"}), 502
+    except ValueError:
+        return jsonify({"error": "Backend returned an invalid response."}), 502
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "5000")),
+        debug=False,
+    )

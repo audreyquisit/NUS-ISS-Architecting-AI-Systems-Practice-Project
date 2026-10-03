@@ -1,7 +1,13 @@
+from typing import Optional
+
 from services.weather_service import get_weather
 
 
-def run(task: str):
+def run(
+    task: str,
+    parsed_request: Optional[dict] = None,
+    candidate_centres: Optional[list[str]] = None,
+):
 
     print("Weather Agent")
 
@@ -10,5 +16,7 @@ def run(task: str):
     return {
         "agent": "weather",
         "task": task,
-        "weather": weather
+        "weather": weather,
+        "candidate_centres": candidate_centres or [],
+        "limitations": ["Weather service currently returns mock data."],
     }
