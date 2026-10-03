@@ -1,6 +1,7 @@
 import unittest
 
 from agents.orchestrator import (
+    _explicit_origin_from_message,
     _normalize_queue_intent,
     _normalize_tasks,
     _queue_status_response,
@@ -10,6 +11,16 @@ from models.orchestration import ParsedRequest, PlannedTask
 
 
 class OrchestratorQueueRoutingTests(unittest.TestCase):
+    def test_explicit_origin_fallback_extracts_nearby_place(self):
+        self.assertEqual(
+            _explicit_origin_from_message("Hi, recommend me some food near Sengkang"),
+            "Sengkang",
+        )
+        self.assertEqual(
+            _explicit_origin_from_message("Find chicken rice near Yio Chu Kang for lunch"),
+            "Yio Chu Kang",
+        )
+
     def test_plain_queue_question_dispatches_queue_worker(self):
         parsed = ParsedRequest(intent="food_discovery")
 

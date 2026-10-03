@@ -113,6 +113,11 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
     session_state = (context or {}).get("state", {})
     current_message = state.get("user_request", "")
+    if not request.origin_text:
+        explicit_origin = _explicit_origin_from_message(current_message)
+        if explicit_origin:
+            request.origin_text = explicit_origin
+            request.field_sources["origin_text"] = "current_message"
     if not request.target_centre_text and re.search(
         r"\b(at|in|inside)\b", current_message, re.I
     ):
@@ -166,6 +171,19 @@ def _requests_queue_data(message: str) -> bool:
         message,
         re.IGNORECASE,
     ))
+
+
+def _explicit_origin_from_message(message: str) -> Optional[str]:
+    match = re.search(
+        r"\b(?:near|around|from)\s+(.+?)"
+        r"(?=\s+(?:for|with|under|within|and|but|while)\b|[,;.!?]|$)",
+        message,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    place = match.group(1).strip(" \t\r\n,.;:!?\"'")
+    return place or None
 
 
 def _stall_name_terms(value: str) -> set[str]:
