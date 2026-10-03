@@ -23,6 +23,7 @@ from services.location_service import (
     get_candidate_centres,
     get_route,
     geocode_place,
+    is_singapore_location,
     load_hawker_centres,
 )
 
@@ -244,9 +245,17 @@ def _resolve_origin(
         return resolved, "free_text_place"
     if query.user_location is not None:
         source = query.user_location_source or "provided_coordinates"
-        return {
+        point = {
             "lat": query.user_location.lat,
             "lng": query.user_location.lng,
+        }
+        if not is_singapore_location(point):
+            raise LocationResolutionError(
+                "That starting point appears to be outside Singapore. "
+                "Please provide a location within Singapore."
+            )
+        return {
+            **point,
             "label": (
                 "your current location"
                 if source == "browser_current_location"

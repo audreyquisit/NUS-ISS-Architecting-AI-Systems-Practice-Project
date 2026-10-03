@@ -1,6 +1,7 @@
 import unittest
 
 from agents.orchestrator import (
+    _explicit_origin_from_message,
     _normalize_queue_intent,
     _normalize_tasks,
     _queue_status_response,
@@ -10,6 +11,16 @@ from models.orchestration import ParsedRequest, PlannedTask
 
 
 class OrchestratorQueueRoutingTests(unittest.TestCase):
+    def test_explicit_origin_fallback_extracts_nearby_place(self):
+        self.assertEqual(
+            _explicit_origin_from_message("Hi, recommend me some food near Sengkang"),
+            "Sengkang",
+        )
+        self.assertEqual(
+            _explicit_origin_from_message("Find chicken rice near Yio Chu Kang for lunch"),
+            "Yio Chu Kang",
+        )
+
     def test_plain_queue_question_dispatches_queue_worker(self):
         parsed = ParsedRequest(intent="food_discovery")
 
@@ -100,6 +111,47 @@ class OrchestratorQueueRoutingTests(unittest.TestCase):
         self.assertIn("   - Most common crowd level: Moderate.", reply)
         self.assertIn("Newton Food Centre", reply)
         self.assertNotIn("Other Centre", reply)
+
+    def test_named_stall_queue_question_returns_individual_stall_stats(self):
+        reply = _queue_status_response(
+            "I want to know the queue for Ang Mo Kio Ave 10 Blk 453A, wanton mee stall",
+            [
+                {
+                    "agent": "location",
+                    "payload": {
+                        "selected_centres": [
+                            {"centre_id": "ang_mo_kio_ave_10_blk_453a"},
+                        ],
+                    },
+                },
+                {
+                    "agent": "queue",
+                    "verified": True,
+                    "candidates": [
+                        {
+                            "hawker_centre_id": "ang_mo_kio_ave_10_blk_453a",
+                            "hawker_centre": "Ang Mo Kio Ave 10 Blk 453A (Chong Boon Market and Food Centre)",
+                            "stall_name": "Demo Wanton mee Stall",
+                            "queue_minutes": 7,
+                            "crowd_level": "Moderate",
+                        },
+                        {
+                            "hawker_centre_id": "ang_mo_kio_ave_10_blk_453a",
+                            "hawker_centre": "Ang Mo Kio Ave 10 Blk 453A (Chong Boon Market and Food Centre)",
+                            "stall_name": "Demo Chicken rice Stall",
+                            "queue_minutes": 19,
+                            "crowd_level": "High",
+                        },
+                    ],
+                },
+            ],
+        )
+
+        self.assertIn("Demo Wanton mee Stall", reply)
+        self.assertIn("about 7 minutes estimated wait", reply)
+        self.assertIn("Crowd level: Moderate", reply)
+        self.assertNotIn("average", reply.casefold())
+        self.assertNotIn("Demo Chicken rice Stall", reply)
 
     def test_queue_question_without_verified_data_does_not_claim_live_status(self):
         reply = _queue_status_response(

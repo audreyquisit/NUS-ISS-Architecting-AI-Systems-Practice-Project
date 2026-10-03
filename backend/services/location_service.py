@@ -113,6 +113,19 @@ def geocode_place(place: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def is_singapore_location(point: Dict[str, float]) -> bool:
+    """Check that coordinates resolve to a nearby Singapore address in OneMap."""
+    data = _get(
+        f"{_base_url()}/api/public/revgeocode",
+        params={
+            "location": f"{point['lat']},{point['lng']}",
+            "buffer": 500,
+            "addressType": "All",
+        },
+    )
+    return bool(data.get("GeocodeInfo"))
+
+
 def get_candidate_centres() -> List[Dict[str, Any]]:
     """Load NEA centre points; actual routes determine travel convenience."""
     results = []
