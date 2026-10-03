@@ -168,6 +168,19 @@ def _requests_queue_data(message: str) -> bool:
     ))
 
 
+def _stall_name_terms(value: str) -> set[str]:
+    generic_terms = {
+        "demo", "stall", "hawker", "centre", "center", "food",
+        "queue", "queues", "crowd", "crowds", "the", "for", "at",
+        "and", "i", "want", "to", "know", "is", "what", "about",
+    }
+    normalized = re.sub(r"[^a-z0-9]+", " ", value.casefold())
+    return {
+        term for term in normalized.split()
+        if term not in generic_terms and not term.isdigit()
+    }
+
+
 def _normalize_tasks(
     tasks: list[PlannedTask], parsed: ParsedRequest, message: str,
     conversation_context: Optional[dict] = None,
@@ -762,6 +775,14 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
             "The queue feed is simulated demo data, not a live service."
         )
 
+    request_terms = _stall_name_terms(user_request)
+    named_stalls = [
+        item for item in queue_candidates
+        if item.get("stall_name")
+        and len(_stall_name_terms(item["stall_name"])) >= 2
+        and _stall_name_terms(item["stall_name"]).issubset(request_terms)
+    ]
+
     location = next((
         item.get("payload", {}) for item in verified
         if item.get("agent") == "location"
@@ -777,6 +798,26 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
         if selected_ids and centre_id not in selected_ids:
             continue
         grouped.setdefault(str(centre_id or candidate.get("hawker_centre") or ""), []).append(candidate)
+
+    if named_stalls:
+        selected_names = {item.get("stall_name") for item in named_stalls}
+        direct_candidates = [
+            candidate for rows in grouped.values() for candidate in rows
+            if candidate.get("stall_name") in selected_names
+        ]
+        if direct_candidates:
+            summary_lines = [
+                "SIMULATED QUEUE DATA: These estimates are for demonstration only, not live conditions.",
+                "",
+                "Queue estimates for the stall you asked about:",
+            ]
+            for index, candidate in enumerate(direct_candidates, start=1):
+                summary_lines.extend([
+                    f"{index}. {candidate.get('hawker_centre', 'Hawker centre')}",
+                    f"   - {candidate['stall_name']}: about {int(candidate['queue_minutes'])} minutes estimated wait.",
+                    f"   - Crowd level: {candidate.get('crowd_level') or 'Unspecified'}.",
+                ])
+            return "\n".join(summary_lines)
 
     if selected_ids:
         ordered_groups = [
