@@ -1,0 +1,161 @@
+{
+  "request_id": "9e3548dd-d4dc-498a-977a-56966445970c",
+  "timestamp": "2026-10-07T16:38:23.873403+00:00",
+  "response": {
+    "reply": "I'm sorry, but there is insufficient information to provide a specific food recommendation in Bedok. The data does not include verified menu items or stalls in the area, and there are no route-checked centres with matching catalogue items. If you would like, I can help you explore other food options nearby, search farther, or focus on a particular centre. Please let me know your preference.",
+    "structured": {
+      "parsed_request": {
+        "intent": "food_discovery",
+        "origin_text": "Bukit Timah",
+        "target_centre_text": null,
+        "requested_area": "east",
+        "travel_mode": null,
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": null,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [],
+        "clarification_question": null,
+        "field_sources": {
+          "origin_text": "conversation_context",
+          "requested_area": "current_message"
+        },
+        "uncertain_fields": []
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve the location for food discovery in Bedok."
+        },
+        {
+          "agent": "weather",
+          "task": "Provide food recommendations based on today's weather in Bedok."
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": [
+        {
+          "agent": "location",
+          "status": "ok",
+          "candidates": [],
+          "evidence": [],
+          "confidence": 0.5,
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "location_required": false,
+          "payload": {
+            "agent": "location",
+            "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+            "limitations": [
+              "OneMap location or route evidence is unavailable."
+            ],
+            "selected_centres": [],
+            "logistics": [],
+            "verified": true,
+            "verification": "centre IDs checked against the NEA catalogue"
+          },
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        }
+      ]
+    },
+    "agent_results": [
+      {
+        "agent": "location",
+        "status": "partial",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ]
+        }
+      }
+    ],
+    "parsed_request": {
+      "intent": "food_discovery",
+      "origin_text": "Bukit Timah",
+      "target_centre_text": null,
+      "requested_area": "east",
+      "travel_mode": null,
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": null,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [],
+      "clarification_question": null,
+      "field_sources": {
+        "origin_text": "conversation_context",
+        "requested_area": "current_message"
+      },
+      "uncertain_fields": []
+    },
+    "verified_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "selected_centres": [],
+          "logistics": [],
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        "verified": true,
+        "verification": "centre IDs checked against the NEA catalogue"
+      }
+    ],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve the location for food discovery in Bedok."
+      },
+      {
+        "agent": "weather",
+        "task": "Provide food recommendations based on today's weather in Bedok."
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}

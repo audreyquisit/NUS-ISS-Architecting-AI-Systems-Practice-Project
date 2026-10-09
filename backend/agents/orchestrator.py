@@ -105,8 +105,9 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
     request.field_sources = {
         key: (
-            value.strip().casefold().replace(" ", "_")
-            if value.strip().casefold().replace(" ", "_") in allowed_sources
+            (value[0] if isinstance(value, list) else value)
+            .strip().casefold().replace(" ", "_")
+            if (value[0] if isinstance(value, list) else value).strip().casefold().replace(" ", "_") in allowed_sources
             else "inferred"
         )
         for key, value in request.field_sources.items()
@@ -130,6 +131,17 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
             request.target_centre_text = next(
                 centre["name"] for centre in catalogue if centre["id"] == centre_id
             )
+        elif not request.origin_text:
+            fallback = re.search(
+                r"\b(?:at|in|inside)\s+(.+?)"
+                r"(?=\s+(?:for|with|under|within|and|but|while)\b|[,;.!?]|$)",
+                current_message, re.I,
+            )
+            if fallback:
+                place = fallback.group(1).strip(" \t\r\n,.;:!?\"'")
+                if place:
+                    request.origin_text = place
+                    request.field_sources["origin_text"] = "current_message"
     if re.search(r"\b(other|different|another)\b", current_message, re.I):
         prior_ids = session_state.get("previous_menu_item_ids", [])
         if prior_ids:
@@ -138,15 +150,27 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
             request.menu_item_preferences = []
             request.stall_name_preferences = []
             request.cuisine_preferences = []
-    # Prevent the planner from turning a complete dish + place request into
-    # a needless yes/no loop. If the request names what to find and where to
-    # start, location resolution can proceed or ask for the genuinely missing
-    # origin itself.
+    # Prevent the planner from turning a complete request into a needless
+    # yes/no loop. A food-discovery request that names where to look is
+    # actionable: the dietary worker returns area-wide candidates when no
+    # specific dish is named, so there is nothing to clarify. Only keep a
+    # clarification when the request is genuinely unactionable - no place at
+    # all, or only an unresolved named centre.
+    unresolvable_target = False
+    if request.target_centre_text:
+        from agents.location_agent import _explicit_centre_target
+        from services.location_service import load_hawker_centres
+
+        catalogue = load_hawker_centres()
+        resolved = _explicit_centre_target(request.target_centre_text, catalogue)
+        if not resolved:
+            unresolvable_target = True
+
     if (
         request.clarification_question
         and request.intent == "food_discovery"
-        and (request.menu_item_preferences or request.cuisine_preferences)
         and (request.origin_text or request.requested_area)
+        and (not request.target_centre_text or unresolvable_target)
     ):
         request.clarification_question = None
     tasks = _normalize_tasks(
@@ -902,6 +926,15 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
     return {"verified_results": verified}
 
 
+def resolve_conflicts(state: SharedState) -> dict[str, Any]:
+    from agents.conflict_resolver import resolve_conflicts as _resolve
+    resolved = _resolve(
+        state.get("verified_results", []),
+        state.get("parsed_request", {}),
+    )
+    return {"verified_results": resolved}
+
+
 def synthesizer(state: SharedState) -> dict[str, str]:
     parsed = state.get("parsed_request", {})
     verified = state.get("verified_results", [])
@@ -1072,6 +1105,7 @@ def build_workflow():
     graph.add_node("expand_menu_search", expand_menu_search)
     graph.add_node("worker", worker)
     graph.add_node("verify_results", verify_results_node)
+    graph.add_node("resolve_conflicts", resolve_conflicts)
     graph.add_node("synthesizer", synthesizer)
     graph.add_node("respond_without_workers", respond_without_workers)
     graph.add_node("clarification_response", clarification_response)
@@ -1091,7 +1125,8 @@ def build_workflow():
         "worker", "verify_results", "location_required_response",
     ])
     graph.add_edge("worker", "verify_results")
-    graph.add_edge("verify_results", "synthesizer")
+    graph.add_edge("verify_results", "resolve_conflicts")
+    graph.add_edge("resolve_conflicts", "synthesizer")
     graph.add_edge("synthesizer", END)
     graph.add_edge("respond_without_workers", END)
     graph.add_edge("clarification_response", END)

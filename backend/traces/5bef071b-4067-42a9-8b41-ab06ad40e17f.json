@@ -1,0 +1,91 @@
+{
+  "request_id": "5bef071b-4067-42a9-8b41-ab06ad40e17f",
+  "timestamp": "2026-10-07T16:25:48.433230+00:00",
+  "response": {
+    "reply": "Do you want food recommendations based on the current weather?",
+    "structured": {
+      "parsed_request": {
+        "intent": "food_discovery",
+        "origin_text": null,
+        "target_centre_text": null,
+        "requested_area": "east",
+        "travel_mode": null,
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": null,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [],
+        "clarification_question": "Do you want food recommendations based on the current weather?",
+        "field_sources": {
+          "requested_area": "conversation_context"
+        },
+        "uncertain_fields": [
+          "weather"
+        ]
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve the changed origin or requested area and gather route evidence."
+        },
+        {
+          "agent": "weather",
+          "task": "Get current weather conditions for Bedok"
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": []
+    },
+    "agent_results": [],
+    "parsed_request": {
+      "intent": "food_discovery",
+      "origin_text": null,
+      "target_centre_text": null,
+      "requested_area": "east",
+      "travel_mode": null,
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": null,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [],
+      "clarification_question": "Do you want food recommendations based on the current weather?",
+      "field_sources": {
+        "requested_area": "conversation_context"
+      },
+      "uncertain_fields": [
+        "weather"
+      ]
+    },
+    "verified_results": [],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve the changed origin or requested area and gather route evidence."
+      },
+      {
+        "agent": "weather",
+        "task": "Get current weather conditions for Bedok"
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}

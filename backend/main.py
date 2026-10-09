@@ -1,4 +1,6 @@
 import os
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -14,8 +16,13 @@ from agents.location_agent import LocationResolutionError, run as run_location_a
 from models.location_models import LocationQuery
 from services.location_service import LocationServiceError
 from services.hawker_service import list_menu_stalls, search_menu_items
+from services.trace_store import save_trace
 
 app = Flask(__name__)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def run_orchestrator(message: str, payload: Optional[dict] = None):
@@ -67,6 +74,19 @@ def run_orchestrator(message: str, payload: Optional[dict] = None):
     }
 
 
+def _execute_and_trace(message: str, payload: dict) -> dict:
+    request_id = str(uuid.uuid4())
+    response = run_orchestrator(message, payload)
+    save_trace({
+        "request_id": request_id,
+        "timestamp": _now_iso(),
+        "user_request": message,
+        "payload": payload,
+        "response": response,
+    })
+    return {"request_id": request_id, **response}
+
+
 def build_preferences_message(payload: dict) -> str:
     preferences = UserPreferences.model_validate(payload)
     dietary = ", ".join(preferences.dietary_preferences) if preferences.dietary_preferences else "no specific dietary restriction"
@@ -96,17 +116,18 @@ def chat():
     if not message:
         return jsonify({"error": "Message is required."}), 400
 
-    response = run_orchestrator(message, payload)
-    if response.get("needs_location"):
-        location_error = (response.get("location_data") or {}).get("error")
+    wrapped = _execute_and_trace(message, payload)
+    if wrapped.get("needs_location"):
+        location_error = (wrapped.get("location_data") or {}).get("error")
         return jsonify({"error": location_error or "I need a starting location."}), 422
     return jsonify({
-        "reply": response["reply"],
-        "structured": response["structured"],
-        "location_data": response.get("location_data"),
-        "parsed_request": response.get("parsed_request"),
-        "verified_results": response.get("verified_results"),
-        "worker_plan": response.get("worker_plan"),
+        "request_id": wrapped["request_id"],
+        "reply": wrapped["reply"],
+        "structured": wrapped["structured"],
+        "location_data": wrapped.get("location_data"),
+        "parsed_request": wrapped.get("parsed_request"),
+        "verified_results": wrapped.get("verified_results"),
+        "worker_plan": wrapped.get("worker_plan"),
     })
 
 
@@ -116,32 +137,70 @@ def recommend():
 
     message = (payload.get("message") or "").strip()
     if message:
-        response = run_orchestrator(message, payload)
+        wrapped = _execute_and_trace(message, payload)
         return jsonify({
-            "reply": response["reply"],
-            "structured": response["structured"],
-            "location_data": response.get("location_data"),
-            "parsed_request": response.get("parsed_request"),
-            "verified_results": response.get("verified_results"),
-            "worker_plan": response.get("worker_plan"),
+            "request_id": wrapped["request_id"],
+            "reply": wrapped["reply"],
+            "structured": wrapped["structured"],
+            "location_data": wrapped.get("location_data"),
+            "parsed_request": wrapped.get("parsed_request"),
+            "verified_results": wrapped.get("verified_results"),
+            "worker_plan": wrapped.get("worker_plan"),
         })
 
     if any(key in payload for key in ["location", "budget", "available_time_min", "dietary_preferences"]):
         try:
             message = build_preferences_message(payload)
-            response = run_orchestrator(message, payload)
+            wrapped = _execute_and_trace(message, payload)
             return jsonify({
-                "reply": response["reply"],
-                "structured": response["structured"],
-                "location_data": response.get("location_data"),
-                "parsed_request": response.get("parsed_request"),
-                "verified_results": response.get("verified_results"),
-                "worker_plan": response.get("worker_plan"),
+                "request_id": wrapped["request_id"],
+                "reply": wrapped["reply"],
+                "structured": wrapped["structured"],
+                "location_data": wrapped.get("location_data"),
+                "parsed_request": wrapped.get("parsed_request"),
+                "verified_results": wrapped.get("verified_results"),
+                "worker_plan": wrapped.get("worker_plan"),
             })
         except Exception as exc:
             return jsonify({"error": f"Invalid preferences payload: {str(exc)}"}), 400
 
     return jsonify({"error": "Message or valid preferences are required."}), 400
+
+
+@app.route("/api/traces", methods=["GET"])
+def api_traces():
+    from services.trace_store import list_traces
+    return jsonify(list_traces())
+
+
+@app.route("/api/trace/<request_id>", methods=["GET"])
+def api_trace(request_id: str):
+    from services.trace_store import load_trace
+    trace = load_trace(request_id)
+    if not trace:
+        return jsonify({"error": "Trace not found"}), 404
+    return jsonify(trace)
+
+
+@app.route("/api/heartbeat", methods=["POST"])
+def heartbeat():
+    payload = request.get_json(silent=True) or {}
+    session_state = payload.get("session_state", {})
+    alerts = []
+
+    current_weather = payload.get("current_weather")
+    previous_weather = session_state.get("last_weather")
+    if current_weather and previous_weather and current_weather != previous_weather:
+        alerts.append({
+            "type": "weather_change",
+            "message": f"Weather changed from {previous_weather} to {current_weather}. Consider adjusting plans.",
+        })
+
+    return jsonify({
+        "status": "ok",
+        "alerts": alerts,
+        "needs_review": bool(alerts),
+    })
 
 
 @app.route("/api/stalls", methods=["GET"])

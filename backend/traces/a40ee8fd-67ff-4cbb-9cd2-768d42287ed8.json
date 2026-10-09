@@ -1,0 +1,1019 @@
+{
+  "request_id": "a40ee8fd-67ff-4cbb-9cd2-768d42287ed8",
+  "timestamp": "2026-10-06T15:50:32.725331+00:00",
+  "user_request": "BEDOK FOOD CENTRE",
+  "payload": {
+    "message": "BEDOK FOOD CENTRE",
+    "user_location": null,
+    "conversation_context": {
+      "state": {
+        "travel_mode": "pt",
+        "location_result": {
+          "agent": "location",
+          "confidence": 1,
+          "intent_interpretation": {
+            "inferred_priorities": [],
+            "interpretation": "food_discovery",
+            "origin_place": null,
+            "origin_preserved": null,
+            "proximity_preference": "convenient",
+            "request_intent": "explore_centre",
+            "target_centre_id": "newton_food_centre",
+            "target_centre_name": "Newton Food Centre",
+            "travel_mode": "pt"
+          },
+          "limitations": [],
+          "logistics": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "reasoning": "You asked about Newton Food Centre; this turn is centre-specific, not a nearby-centre search.",
+          "selected_centres": [
+            {
+              "centre_id": "newton_food_centre",
+              "logistics_fit": 1,
+              "rank": 1,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "verification": "centre IDs checked against the NEA catalogue",
+          "verified": true
+        },
+        "last_weather": null
+      },
+      "turns": [
+        {
+          "role": "user",
+          "content": "i want the cheapest chicken rice near me"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry, but there is insufficient information to provide a specific recommendation for the cheapest chicken rice near you. The location data is not configured, and there are no verified menu items or stalls available in the current dataset. \n\nWould you like to explore other food options nearby, search farther, or specify a particular centre for more targeted results?"
+        },
+        {
+          "role": "user",
+          "content": "i want the cheapest chicken rice near me'"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm unable to provide a specific recommendation for the cheapest chicken rice near you due to insufficient location data and menu item verification.\n\nNo source-backed match was found among the route-checked centres. Would you like to explore other food options nearby, search farther, or specify a particular centre?"
+        },
+        {
+          "role": "user",
+          "content": "yes. newton town center"
+        },
+        {
+          "role": "assistant",
+          "content": "I couldn't verify Newton Town Center in the hawker-centre catalogue, so I can't confirm food options there. I haven't substituted other centres for it. You can also name another centre."
+        },
+        {
+          "role": "user",
+          "content": "NEWTON FOOD CENTRE"
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry, but there is insufficient information to provide a specific recommendation for chicken rice at Newton Food Centre. The candidate join results did not yield any verified menu items that match your request. \n\nIf you are open to exploring other food options nearby or at a different centre, please let me know, and I can assist with that."
+        }
+      ]
+    }
+  },
+  "response": {
+    "reply": "DEMO DATA: Listings marked Demo and their prices are fictional examples, not verified stalls or current menu prices.\n\nHere are some food options at Bedok Food Centre based on the available data:\n\n1. Bedok Food Centre\n   Demo Chicken rice Stall: Chicken rice for $5.00\n   Note: This is illustrative mock data and not verified.\n\n2. Bedok Food Centre\n   Demo Wanton mee Stall: Wanton mee for $3.50\n   Note: This is illustrative mock data and not verified.\n\n3. Bedok Food Centre\n   Demo Hokkien mee Stall: Hokkien mee for $6.00\n   Note: This is illustrative mock data and not verified.\n\nThese recommendations are based on synthetic demo data and may not reflect actual stalls or menu items at Bedok Food Centre.",
+    "structured": {
+      "parsed_request": {
+        "intent": "food_discovery",
+        "origin_text": null,
+        "target_centre_text": "Bedok Food Centre",
+        "requested_area": null,
+        "travel_mode": "pt",
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": null,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [],
+        "clarification_question": null,
+        "field_sources": {
+          "target_centre_text": "current_message",
+          "travel_mode": "conversation_context"
+        },
+        "uncertain_fields": []
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve location for Bedok Food Centre."
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": [
+        {
+          "agent": "location",
+          "status": "ok",
+          "candidates": [],
+          "evidence": [],
+          "confidence": 1.0,
+          "limitations": [],
+          "error": null,
+          "location_required": false,
+          "payload": {
+            "selected_centres": [
+              {
+                "centre_id": "bedok_food_centre",
+                "rank": 1,
+                "logistics_fit": 1.0,
+                "rationale": "This is the centre named in your current message."
+              }
+            ],
+            "logistics": [],
+            "reasoning": "You asked about Bedok Food Centre; this turn is centre-specific, not a nearby-centre search.",
+            "confidence": 1.0,
+            "limitations": [],
+            "origin": null,
+            "origin_label": null,
+            "origin_source": null,
+            "intent_interpretation": {
+              "request_intent": "explore_centre",
+              "target_centre_id": "bedok_food_centre",
+              "origin_place": null,
+              "travel_mode": "pt",
+              "proximity_preference": "convenient",
+              "inferred_priorities": [],
+              "interpretation": "food_discovery",
+              "target_centre_name": "Bedok Food Centre",
+              "origin_preserved": null
+            },
+            "agent": "location",
+            "verified": true,
+            "verification": "centre IDs checked against the NEA catalogue"
+          },
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        {
+          "agent": "dietary",
+          "status": "ok",
+          "candidates": [
+            {
+              "stall_id": "demo_bedok_food_centre_chicken_rice",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Chicken rice Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_chicken_rice_item_000",
+              "menu_item_name": "Chicken rice",
+              "menu_item": "Chicken rice",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            },
+            {
+              "stall_id": "demo_bedok_food_centre_wanton_mee",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Wanton mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_wanton_mee_item_000",
+              "menu_item_name": "Wanton mee",
+              "menu_item": "Wanton mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 3.5,
+              "price_currency": "SGD",
+              "price_label": "$3.50",
+              "price_sgd": 3.5,
+              "price_sgd_min": 3.5,
+              "price_sgd_max": 3.5,
+              "price_sgd_options": [
+                3.5
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$3.50",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            },
+            {
+              "stall_id": "demo_bedok_food_centre_hokkien_mee",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Hokkien mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_hokkien_mee_item_000",
+              "menu_item_name": "Hokkien mee",
+              "menu_item": "Hokkien mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 6.0,
+              "price_currency": "SGD",
+              "price_label": "$6.00",
+              "price_sgd": 6.0,
+              "price_sgd_min": 6.0,
+              "price_sgd_max": 6.0,
+              "price_sgd_options": [
+                6.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$6.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            }
+          ],
+          "evidence": [],
+          "confidence": 0.6,
+          "limitations": [],
+          "error": null,
+          "location_required": false,
+          "payload": {
+            "agent": "dietary",
+            "confidence": 0.6,
+            "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+            "preferences": {
+              "dietary": [],
+              "cuisine": []
+            },
+            "limitations": [],
+            "candidate_centre_ids": [
+              "bedok_food_centre"
+            ],
+            "verified": true,
+            "removed_candidate_count": 0,
+            "verification": "required fields and parsed hard constraints checked"
+          },
+          "verified": true,
+          "removed_candidate_count": 0,
+          "verification": "required fields and parsed hard constraints checked"
+        },
+        {
+          "agent": "candidate_join",
+          "verified": true,
+          "candidates": [
+            {
+              "stall_id": "demo_bedok_food_centre_chicken_rice",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Chicken rice Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_chicken_rice_item_000",
+              "menu_item_name": "Chicken rice",
+              "menu_item": "Chicken rice",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            },
+            {
+              "stall_id": "demo_bedok_food_centre_wanton_mee",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Wanton mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_wanton_mee_item_000",
+              "menu_item_name": "Wanton mee",
+              "menu_item": "Wanton mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 3.5,
+              "price_currency": "SGD",
+              "price_label": "$3.50",
+              "price_sgd": 3.5,
+              "price_sgd_min": 3.5,
+              "price_sgd_max": 3.5,
+              "price_sgd_options": [
+                3.5
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$3.50",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            },
+            {
+              "stall_id": "demo_bedok_food_centre_hokkien_mee",
+              "hawker_centre_id": "bedok_food_centre",
+              "hawker_centre": "Bedok Food Centre",
+              "hawker_centre_source_name": "Bedok Food Centre",
+              "stall_name": "Demo Hokkien mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_food_centre_hokkien_mee_item_000",
+              "menu_item_name": "Hokkien mee",
+              "menu_item": "Hokkien mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 6.0,
+              "price_currency": "SGD",
+              "price_label": "$6.00",
+              "price_sgd": 6.0,
+              "price_sgd_min": 6.0,
+              "price_sgd_max": 6.0,
+              "price_sgd_options": [
+                6.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$6.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            }
+          ],
+          "limitations": [],
+          "verification": "menu item IDs and centre IDs checked against the source-backed catalogue"
+        }
+      ]
+    },
+    "location_data": {
+      "selected_centres": [
+        {
+          "centre_id": "bedok_food_centre",
+          "rank": 1,
+          "logistics_fit": 1.0,
+          "rationale": "This is the centre named in your current message."
+        }
+      ],
+      "logistics": [],
+      "reasoning": "You asked about Bedok Food Centre; this turn is centre-specific, not a nearby-centre search.",
+      "confidence": 1.0,
+      "limitations": [],
+      "origin": null,
+      "origin_label": null,
+      "origin_source": null,
+      "intent_interpretation": {
+        "request_intent": "explore_centre",
+        "target_centre_id": "bedok_food_centre",
+        "origin_place": null,
+        "travel_mode": "pt",
+        "proximity_preference": "convenient",
+        "inferred_priorities": [],
+        "interpretation": "food_discovery",
+        "target_centre_name": "Bedok Food Centre",
+        "origin_preserved": null
+      },
+      "agent": "location",
+      "verified": true,
+      "verification": "centre IDs checked against the NEA catalogue"
+    },
+    "agent_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 1.0,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "selected_centres": [
+            {
+              "centre_id": "bedok_food_centre",
+              "rank": 1,
+              "logistics_fit": 1.0,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "logistics": [],
+          "reasoning": "You asked about Bedok Food Centre; this turn is centre-specific, not a nearby-centre search.",
+          "confidence": 1.0,
+          "limitations": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "intent_interpretation": {
+            "request_intent": "explore_centre",
+            "target_centre_id": "bedok_food_centre",
+            "origin_place": null,
+            "travel_mode": "pt",
+            "proximity_preference": "convenient",
+            "inferred_priorities": [],
+            "interpretation": "food_discovery",
+            "target_centre_name": "Bedok Food Centre",
+            "origin_preserved": null
+          },
+          "agent": "location"
+        }
+      },
+      {
+        "agent": "dietary",
+        "status": "ok",
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_food_centre_chicken_rice",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_wanton_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 3.5,
+            "price_currency": "SGD",
+            "price_label": "$3.50",
+            "price_sgd": 3.5,
+            "price_sgd_min": 3.5,
+            "price_sgd_max": 3.5,
+            "price_sgd_options": [
+              3.5
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$3.50",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 6.0,
+            "price_currency": "SGD",
+            "price_label": "$6.00",
+            "price_sgd": 6.0,
+            "price_sgd_min": 6.0,
+            "price_sgd_max": 6.0,
+            "price_sgd_options": [
+              6.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$6.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          }
+        ],
+        "evidence": [],
+        "confidence": 0.6,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "agent": "dietary",
+          "confidence": 0.6,
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+          "preferences": {
+            "dietary": [],
+            "cuisine": []
+          },
+          "limitations": [],
+          "candidate_centre_ids": [
+            "bedok_food_centre"
+          ]
+        }
+      }
+    ],
+    "parsed_request": {
+      "intent": "food_discovery",
+      "origin_text": null,
+      "target_centre_text": "Bedok Food Centre",
+      "requested_area": null,
+      "travel_mode": "pt",
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": null,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [],
+      "clarification_question": null,
+      "field_sources": {
+        "target_centre_text": "current_message",
+        "travel_mode": "conversation_context"
+      },
+      "uncertain_fields": []
+    },
+    "verified_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 1.0,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "selected_centres": [
+            {
+              "centre_id": "bedok_food_centre",
+              "rank": 1,
+              "logistics_fit": 1.0,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "logistics": [],
+          "reasoning": "You asked about Bedok Food Centre; this turn is centre-specific, not a nearby-centre search.",
+          "confidence": 1.0,
+          "limitations": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "intent_interpretation": {
+            "request_intent": "explore_centre",
+            "target_centre_id": "bedok_food_centre",
+            "origin_place": null,
+            "travel_mode": "pt",
+            "proximity_preference": "convenient",
+            "inferred_priorities": [],
+            "interpretation": "food_discovery",
+            "target_centre_name": "Bedok Food Centre",
+            "origin_preserved": null
+          },
+          "agent": "location",
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        "verified": true,
+        "verification": "centre IDs checked against the NEA catalogue"
+      },
+      {
+        "agent": "dietary",
+        "status": "ok",
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_food_centre_chicken_rice",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_wanton_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 3.5,
+            "price_currency": "SGD",
+            "price_label": "$3.50",
+            "price_sgd": 3.5,
+            "price_sgd_min": 3.5,
+            "price_sgd_max": 3.5,
+            "price_sgd_options": [
+              3.5
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$3.50",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 6.0,
+            "price_currency": "SGD",
+            "price_label": "$6.00",
+            "price_sgd": 6.0,
+            "price_sgd_min": 6.0,
+            "price_sgd_max": 6.0,
+            "price_sgd_options": [
+              6.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$6.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          }
+        ],
+        "evidence": [],
+        "confidence": 0.6,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "agent": "dietary",
+          "confidence": 0.6,
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+          "preferences": {
+            "dietary": [],
+            "cuisine": []
+          },
+          "limitations": [],
+          "candidate_centre_ids": [
+            "bedok_food_centre"
+          ],
+          "verified": true,
+          "removed_candidate_count": 0,
+          "verification": "required fields and parsed hard constraints checked"
+        },
+        "verified": true,
+        "removed_candidate_count": 0,
+        "verification": "required fields and parsed hard constraints checked"
+      },
+      {
+        "agent": "candidate_join",
+        "verified": true,
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_food_centre_chicken_rice",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_wanton_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 3.5,
+            "price_currency": "SGD",
+            "price_label": "$3.50",
+            "price_sgd": 3.5,
+            "price_sgd_min": 3.5,
+            "price_sgd_max": 3.5,
+            "price_sgd_options": [
+              3.5
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$3.50",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          },
+          {
+            "stall_id": "demo_bedok_food_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_food_centre",
+            "hawker_centre": "Bedok Food Centre",
+            "hawker_centre_source_name": "Bedok Food Centre",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_food_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 6.0,
+            "price_currency": "SGD",
+            "price_label": "$6.00",
+            "price_sgd": 6.0,
+            "price_sgd_min": 6.0,
+            "price_sgd_max": 6.0,
+            "price_sgd_options": [
+              6.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$6.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          }
+        ],
+        "limitations": [],
+        "verification": "menu item IDs and centre IDs checked against the source-backed catalogue"
+      }
+    ],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve location for Bedok Food Centre."
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}

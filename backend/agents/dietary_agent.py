@@ -73,6 +73,15 @@ def run(
     )
 
     limitations = []
+    confidence = 0.3
+    if stalls:
+        if final_dietary:
+            suitable = [item for item in stalls if item.get("dietary_suitable") is True]
+            confidence = 0.9 if suitable else 0.6
+        elif final_cuisine:
+            confidence = 0.9
+        else:
+            confidence = 0.6
     if final_dietary:
         limitations.append(
             "The menu source has no ingredient, allergen, or certified dietary fields; "
@@ -84,6 +93,7 @@ def run(
         )
     return {
         "agent": "dietary",
+        "confidence": confidence,
         "task": task,
         "preferences": {
             "dietary": final_dietary,

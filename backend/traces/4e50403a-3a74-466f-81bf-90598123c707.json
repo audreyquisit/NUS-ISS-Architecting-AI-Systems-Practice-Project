@@ -1,0 +1,187 @@
+{
+  "request_id": "4e50403a-3a74-466f-81bf-90598123c707",
+  "timestamp": "2026-10-06T15:45:39.560690+00:00",
+  "user_request": "i want the cheapest chicken rice near me",
+  "payload": {
+    "message": "i want the cheapest chicken rice near me",
+    "user_location": null,
+    "conversation_context": {
+      "state": {},
+      "turns": []
+    }
+  },
+  "response": {
+    "reply": "I'm sorry, but there is insufficient information to provide a specific recommendation for the cheapest chicken rice near you. The location data is not configured, and there are no verified menu items or stalls available in the current dataset. \n\nWould you like to explore other food options nearby, search farther, or specify a particular centre for more targeted results?",
+    "structured": {
+      "parsed_request": {
+        "intent": "food_discovery",
+        "origin_text": "me",
+        "target_centre_text": null,
+        "requested_area": null,
+        "travel_mode": null,
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [
+          "chicken rice"
+        ],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": 0.0,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [],
+        "clarification_question": null,
+        "field_sources": {
+          "menu_item_preferences": "current_message",
+          "budget_amount": "current_message",
+          "origin_text": "current_message"
+        },
+        "uncertain_fields": []
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve the changed origin or requested area and gather route evidence."
+        },
+        {
+          "agent": "budget",
+          "task": "Find the cheapest chicken rice nearby."
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": [
+        {
+          "agent": "location",
+          "status": "ok",
+          "candidates": [],
+          "evidence": [],
+          "confidence": 0.5,
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "location_required": false,
+          "payload": {
+            "agent": "location",
+            "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+            "limitations": [
+              "OneMap location or route evidence is unavailable."
+            ],
+            "selected_centres": [],
+            "logistics": [],
+            "verified": true,
+            "verification": "centre IDs checked against the NEA catalogue"
+          },
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        }
+      ]
+    },
+    "location_data": {
+      "agent": "location",
+      "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+      "limitations": [
+        "OneMap location or route evidence is unavailable."
+      ],
+      "selected_centres": [],
+      "logistics": [],
+      "verified": true,
+      "verification": "centre IDs checked against the NEA catalogue"
+    },
+    "agent_results": [
+      {
+        "agent": "location",
+        "status": "partial",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ]
+        }
+      }
+    ],
+    "parsed_request": {
+      "intent": "food_discovery",
+      "origin_text": "me",
+      "target_centre_text": null,
+      "requested_area": null,
+      "travel_mode": null,
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [
+        "chicken rice"
+      ],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": 0.0,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [],
+      "clarification_question": null,
+      "field_sources": {
+        "menu_item_preferences": "current_message",
+        "budget_amount": "current_message",
+        "origin_text": "current_message"
+      },
+      "uncertain_fields": []
+    },
+    "verified_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "OneMap is not configured. Set ONEMAP_EMAIL and ONEMAP_EMAIL_PASSWORD.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "selected_centres": [],
+          "logistics": [],
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        "verified": true,
+        "verification": "centre IDs checked against the NEA catalogue"
+      }
+    ],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve the changed origin or requested area and gather route evidence."
+      },
+      {
+        "agent": "budget",
+        "task": "Find the cheapest chicken rice nearby."
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}

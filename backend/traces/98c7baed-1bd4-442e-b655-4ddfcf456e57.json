@@ -1,0 +1,1075 @@
+{
+  "request_id": "98c7baed-1bd4-442e-b655-4ddfcf456e57",
+  "timestamp": "2026-10-06T16:28:20.197083+00:00",
+  "user_request": "\"85 Fengshan Centre\"",
+  "payload": {
+    "message": "\"85 Fengshan Centre\"",
+    "user_location": null,
+    "conversation_context": {
+      "state": {
+        "travel_mode": "pt",
+        "priorities": [
+          "weather",
+          "proximity",
+          "cost"
+        ],
+        "location_result": {
+          "agent": "location",
+          "confidence": 1,
+          "intent_interpretation": {
+            "inferred_priorities": [
+              "weather",
+              "proximity",
+              "cost"
+            ],
+            "interpretation": "centre_details",
+            "origin_place": "Bedok MRT",
+            "origin_preserved": null,
+            "proximity_preference": "weather, proximity, cost",
+            "request_intent": "explore_centre",
+            "target_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "target_centre_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "travel_mode": "pt"
+          },
+          "limitations": [],
+          "logistics": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "reasoning": "You asked about Bedok North Street 4 Blk 85 (85 Fengshan Centre); this turn is centre-specific, not a nearby-centre search.",
+          "selected_centres": [
+            {
+              "centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "logistics_fit": 1,
+              "rank": 1,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "verification": "centre IDs checked against the NEA catalogue",
+          "verified": true
+        },
+        "previous_menu_item_ids": [
+          "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+          "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+          "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000"
+        ],
+        "last_weather": "rainy"
+      },
+      "turns": [
+        {
+          "role": "user",
+          "content": "why are you giving me all bedok food centre? are there other centres at bedok"
+        },
+        {
+          "role": "assistant",
+          "content": "It seems like there is insufficient information to provide specific food recommendations from Bedok Food Centre. The current data does not include any verified menu items that match your preferences and constraints.\n\n1. Bedok Food Centre; travel time not specified.\n   - No verified stalls or menu items available for recommendation.\n\nIf you are interested in exploring other food centres in Bedok or nearby areas, please let me know, and I can assist with that."
+        },
+        {
+          "role": "user",
+          "content": "fengshan?:"
+        },
+        {
+          "role": "assistant",
+          "content": "Are you asking about Fengshan Market & Food Centre?"
+        },
+        {
+          "role": "user",
+          "content": "yes"
+        },
+        {
+          "role": "assistant",
+          "content": "I couldn't verify Fengshan Market & Food Centre in the hawker-centre catalogue, so I can't confirm food options there. I haven't substituted other centres for it. You can also name another centre."
+        },
+        {
+          "role": "user",
+          "content": "\"85 Fengshan Centre\""
+        },
+        {
+          "role": "assistant",
+          "content": "DEMO DATA: Listings marked Demo and their prices are fictional examples, not verified stalls or current menu prices.\n\nHere are some illustrative food options at 85 Fengshan Centre, based on mock data:\n\n1. Bedok North Street 4 Blk 85 (85 Fengshan Centre)\n   Demo Chicken rice Stall: Chicken rice for $5.00\n   Note: This is illustrative mock data and not verified at this centre.\n\n2. Bedok North Street 4 Blk 85 (85 Fengshan Centre)\n   Demo Wanton mee Stall: Wanton mee for $4.00\n   Note: This is illustrative mock data and not verified at this centre.\n\n3. Bedok North Street 4 Blk 85 (85 Fengshan Centre)\n   Demo Hokkien mee Stall: Hokkien mee for $5.00\n   Note: This is illustrative mock data and not verified at this centre.\n\nPlease note that these are fictional examples and not verified listings. If you need real recommendations, please specify your preferences or dietary restrictions."
+        }
+      ]
+    }
+  },
+  "response": {
+    "reply": "DEMO DATA: Listings marked Demo and their prices are fictional examples, not verified stalls or current menu prices.\n\nHere are some illustrative mock recommendations for 85 Fengshan Centre based on the available data:\n\n1. Bedok North Street 4 Blk 85 (85 Fengshan Centre); travel from Bedok MRT by public transport.\n   - Demo Chicken rice Stall: Chicken rice at $5.00\n   - Note: This is illustrative mock data and not verified at this centre.\n\n2. Bedok North Street 4 Blk 85 (85 Fengshan Centre); travel from Bedok MRT by public transport.\n   - Demo Wanton mee Stall: Wanton mee at $4.00\n   - Note: This is illustrative mock data and not verified at this centre.\n\n3. Bedok North Street 4 Blk 85 (85 Fengshan Centre); travel from Bedok MRT by public transport.\n   - Demo Hokkien mee Stall: Hokkien mee at $5.00\n   - Note: This is illustrative mock data and not verified at this centre.\n\nThese recommendations are based on synthetic mock data and are for illustrative purposes only. There is no verified information about actual stalls or menu items at this centre.",
+    "structured": {
+      "parsed_request": {
+        "intent": "centre_details",
+        "origin_text": "Bedok MRT",
+        "target_centre_text": "85 Fengshan Centre",
+        "requested_area": null,
+        "travel_mode": "pt",
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": null,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [
+          "weather",
+          "proximity",
+          "cost"
+        ],
+        "clarification_question": null,
+        "field_sources": {
+          "origin_text": "conversation_context",
+          "target_centre_text": "current_message",
+          "travel_mode": "conversation_context",
+          "priorities": "conversation_context"
+        },
+        "uncertain_fields": []
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve details for 85 Fengshan Centre based on current context and preferences."
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": [
+        {
+          "agent": "location",
+          "status": "ok",
+          "candidates": [],
+          "evidence": [],
+          "confidence": 1.0,
+          "limitations": [],
+          "error": null,
+          "location_required": false,
+          "payload": {
+            "selected_centres": [
+              {
+                "centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+                "rank": 1,
+                "logistics_fit": 1.0,
+                "rationale": "This is the centre named in your current message."
+              }
+            ],
+            "logistics": [],
+            "reasoning": "You asked about Bedok North Street 4 Blk 85 (85 Fengshan Centre); this turn is centre-specific, not a nearby-centre search.",
+            "confidence": 1.0,
+            "limitations": [],
+            "origin": null,
+            "origin_label": null,
+            "origin_source": null,
+            "intent_interpretation": {
+              "request_intent": "explore_centre",
+              "target_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "origin_place": "Bedok MRT",
+              "travel_mode": "pt",
+              "proximity_preference": "weather, proximity, cost",
+              "inferred_priorities": [
+                "weather",
+                "proximity",
+                "cost"
+              ],
+              "interpretation": "centre_details",
+              "target_centre_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "origin_preserved": null
+            },
+            "agent": "location",
+            "verified": true,
+            "verification": "centre IDs checked against the NEA catalogue"
+          },
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        {
+          "agent": "dietary",
+          "status": "ok",
+          "candidates": [
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Chicken rice Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+              "menu_item_name": "Chicken rice",
+              "menu_item": "Chicken rice",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            },
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Wanton mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+              "menu_item_name": "Wanton mee",
+              "menu_item": "Wanton mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 4.0,
+              "price_currency": "SGD",
+              "price_label": "$4.00",
+              "price_sgd": 4.0,
+              "price_sgd_min": 4.0,
+              "price_sgd_max": 4.0,
+              "price_sgd_options": [
+                4.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$4.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            },
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Hokkien mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000",
+              "menu_item_name": "Hokkien mee",
+              "menu_item": "Hokkien mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name."
+            }
+          ],
+          "evidence": [],
+          "confidence": 0.6,
+          "limitations": [],
+          "error": null,
+          "location_required": false,
+          "payload": {
+            "agent": "dietary",
+            "confidence": 0.6,
+            "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+            "preferences": {
+              "dietary": [],
+              "cuisine": []
+            },
+            "limitations": [],
+            "candidate_centre_ids": [
+              "bedok_north_street_4_blk_85_85_fengshan_centre"
+            ],
+            "verified": true,
+            "removed_candidate_count": 0,
+            "verification": "required fields and parsed hard constraints checked"
+          },
+          "verified": true,
+          "removed_candidate_count": 0,
+          "verification": "required fields and parsed hard constraints checked"
+        },
+        {
+          "agent": "candidate_join",
+          "verified": true,
+          "candidates": [
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Chicken rice Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+              "menu_item_name": "Chicken rice",
+              "menu_item": "Chicken rice",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            },
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Wanton mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+              "menu_item_name": "Wanton mee",
+              "menu_item": "Wanton mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 4.0,
+              "price_currency": "SGD",
+              "price_label": "$4.00",
+              "price_sgd": 4.0,
+              "price_sgd_min": 4.0,
+              "price_sgd_max": 4.0,
+              "price_sgd_options": [
+                4.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$4.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            },
+            {
+              "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee",
+              "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+              "stall_name": "Demo Hokkien mee Stall",
+              "unit_number": null,
+              "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000",
+              "menu_item_name": "Hokkien mee",
+              "menu_item": "Hokkien mee",
+              "categories": [
+                "Chinese"
+              ],
+              "cuisine": "Chinese",
+              "price": 5.0,
+              "price_currency": "SGD",
+              "price_label": "$5.00",
+              "price_sgd": 5.0,
+              "price_sgd_min": 5.0,
+              "price_sgd_max": 5.0,
+              "price_sgd_options": [
+                5.0
+              ],
+              "price_option_labels": [],
+              "price_model": "fixed",
+              "price_status": "fixed",
+              "price_basis": "illustrative_only",
+              "price_raw": "$5.00",
+              "dietary_tags": [],
+              "dietary_suitable": null,
+              "source_url": null,
+              "data_origin": "synthetic_mock",
+              "is_mock": true,
+              "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+              "matched_dietary_tags": [],
+              "matched_cuisine": [],
+              "preference_score": 0.0,
+              "reason": "Menu item matched the source category or requested dish name.",
+              "supporting_agents": [
+                "dietary"
+              ]
+            }
+          ],
+          "limitations": [],
+          "verification": "menu item IDs and centre IDs checked against the source-backed catalogue"
+        },
+        {
+          "agent": "conflict_resolution",
+          "verified": true,
+          "candidates": [],
+          "limitations": [],
+          "verification": "Re-ranked by priorities: weather, proximity, cost. Weights applied: weather=1.00."
+        }
+      ]
+    },
+    "location_data": {
+      "selected_centres": [
+        {
+          "centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+          "rank": 1,
+          "logistics_fit": 1.0,
+          "rationale": "This is the centre named in your current message."
+        }
+      ],
+      "logistics": [],
+      "reasoning": "You asked about Bedok North Street 4 Blk 85 (85 Fengshan Centre); this turn is centre-specific, not a nearby-centre search.",
+      "confidence": 1.0,
+      "limitations": [],
+      "origin": null,
+      "origin_label": null,
+      "origin_source": null,
+      "intent_interpretation": {
+        "request_intent": "explore_centre",
+        "target_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+        "origin_place": "Bedok MRT",
+        "travel_mode": "pt",
+        "proximity_preference": "weather, proximity, cost",
+        "inferred_priorities": [
+          "weather",
+          "proximity",
+          "cost"
+        ],
+        "interpretation": "centre_details",
+        "target_centre_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+        "origin_preserved": null
+      },
+      "agent": "location",
+      "verified": true,
+      "verification": "centre IDs checked against the NEA catalogue"
+    },
+    "agent_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 1.0,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "selected_centres": [
+            {
+              "centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "rank": 1,
+              "logistics_fit": 1.0,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "logistics": [],
+          "reasoning": "You asked about Bedok North Street 4 Blk 85 (85 Fengshan Centre); this turn is centre-specific, not a nearby-centre search.",
+          "confidence": 1.0,
+          "limitations": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "intent_interpretation": {
+            "request_intent": "explore_centre",
+            "target_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "origin_place": "Bedok MRT",
+            "travel_mode": "pt",
+            "proximity_preference": "weather, proximity, cost",
+            "inferred_priorities": [
+              "weather",
+              "proximity",
+              "cost"
+            ],
+            "interpretation": "centre_details",
+            "target_centre_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "origin_preserved": null
+          },
+          "agent": "location"
+        }
+      },
+      {
+        "agent": "dietary",
+        "status": "ok",
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 4.0,
+            "price_currency": "SGD",
+            "price_label": "$4.00",
+            "price_sgd": 4.0,
+            "price_sgd_min": 4.0,
+            "price_sgd_max": 4.0,
+            "price_sgd_options": [
+              4.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$4.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          }
+        ],
+        "evidence": [],
+        "confidence": 0.6,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "agent": "dietary",
+          "confidence": 0.6,
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+          "preferences": {
+            "dietary": [],
+            "cuisine": []
+          },
+          "limitations": [],
+          "candidate_centre_ids": [
+            "bedok_north_street_4_blk_85_85_fengshan_centre"
+          ]
+        }
+      }
+    ],
+    "parsed_request": {
+      "intent": "centre_details",
+      "origin_text": "Bedok MRT",
+      "target_centre_text": "85 Fengshan Centre",
+      "requested_area": null,
+      "travel_mode": "pt",
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": null,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [
+        "weather",
+        "proximity",
+        "cost"
+      ],
+      "clarification_question": null,
+      "field_sources": {
+        "origin_text": "conversation_context",
+        "target_centre_text": "current_message",
+        "travel_mode": "conversation_context",
+        "priorities": "conversation_context"
+      },
+      "uncertain_fields": []
+    },
+    "verified_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 1.0,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "selected_centres": [
+            {
+              "centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+              "rank": 1,
+              "logistics_fit": 1.0,
+              "rationale": "This is the centre named in your current message."
+            }
+          ],
+          "logistics": [],
+          "reasoning": "You asked about Bedok North Street 4 Blk 85 (85 Fengshan Centre); this turn is centre-specific, not a nearby-centre search.",
+          "confidence": 1.0,
+          "limitations": [],
+          "origin": null,
+          "origin_label": null,
+          "origin_source": null,
+          "intent_interpretation": {
+            "request_intent": "explore_centre",
+            "target_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "origin_place": "Bedok MRT",
+            "travel_mode": "pt",
+            "proximity_preference": "weather, proximity, cost",
+            "inferred_priorities": [
+              "weather",
+              "proximity",
+              "cost"
+            ],
+            "interpretation": "centre_details",
+            "target_centre_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "origin_preserved": null
+          },
+          "agent": "location",
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        "verified": true,
+        "verification": "centre IDs checked against the NEA catalogue"
+      },
+      {
+        "agent": "dietary",
+        "status": "ok",
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 4.0,
+            "price_currency": "SGD",
+            "price_label": "$4.00",
+            "price_sgd": 4.0,
+            "price_sgd_min": 4.0,
+            "price_sgd_max": 4.0,
+            "price_sgd_options": [
+              4.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$4.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name."
+          }
+        ],
+        "evidence": [],
+        "confidence": 0.6,
+        "limitations": [],
+        "error": null,
+        "location_required": false,
+        "payload": {
+          "agent": "dietary",
+          "confidence": 0.6,
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints.",
+          "preferences": {
+            "dietary": [],
+            "cuisine": []
+          },
+          "limitations": [],
+          "candidate_centre_ids": [
+            "bedok_north_street_4_blk_85_85_fengshan_centre"
+          ],
+          "verified": true,
+          "removed_candidate_count": 0,
+          "verification": "required fields and parsed hard constraints checked"
+        },
+        "verified": true,
+        "removed_candidate_count": 0,
+        "verification": "required fields and parsed hard constraints checked"
+      },
+      {
+        "agent": "candidate_join",
+        "verified": true,
+        "candidates": [
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Chicken rice Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_chicken_rice_item_000",
+            "menu_item_name": "Chicken rice",
+            "menu_item": "Chicken rice",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Wanton mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_wanton_mee_item_000",
+            "menu_item_name": "Wanton mee",
+            "menu_item": "Wanton mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 4.0,
+            "price_currency": "SGD",
+            "price_label": "$4.00",
+            "price_sgd": 4.0,
+            "price_sgd_min": 4.0,
+            "price_sgd_max": 4.0,
+            "price_sgd_options": [
+              4.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$4.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          },
+          {
+            "stall_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee",
+            "hawker_centre_id": "bedok_north_street_4_blk_85_85_fengshan_centre",
+            "hawker_centre": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "hawker_centre_source_name": "Bedok North Street 4 Blk 85 (85 Fengshan Centre)",
+            "stall_name": "Demo Hokkien mee Stall",
+            "unit_number": null,
+            "menu_item_id": "demo_bedok_north_street_4_blk_85_85_fengshan_centre_hokkien_mee_item_000",
+            "menu_item_name": "Hokkien mee",
+            "menu_item": "Hokkien mee",
+            "categories": [
+              "Chinese"
+            ],
+            "cuisine": "Chinese",
+            "price": 5.0,
+            "price_currency": "SGD",
+            "price_label": "$5.00",
+            "price_sgd": 5.0,
+            "price_sgd_min": 5.0,
+            "price_sgd_max": 5.0,
+            "price_sgd_options": [
+              5.0
+            ],
+            "price_option_labels": [],
+            "price_model": "fixed",
+            "price_status": "fixed",
+            "price_basis": "illustrative_only",
+            "price_raw": "$5.00",
+            "dietary_tags": [],
+            "dietary_suitable": null,
+            "source_url": null,
+            "data_origin": "synthetic_mock",
+            "is_mock": true,
+            "mock_notice": "Fictional demo stall, menu, and price; not verified at this centre.",
+            "matched_dietary_tags": [],
+            "matched_cuisine": [],
+            "preference_score": 0.0,
+            "reason": "Menu item matched the source category or requested dish name.",
+            "supporting_agents": [
+              "dietary"
+            ]
+          }
+        ],
+        "limitations": [],
+        "verification": "menu item IDs and centre IDs checked against the source-backed catalogue"
+      },
+      {
+        "agent": "conflict_resolution",
+        "verified": true,
+        "candidates": [],
+        "limitations": [],
+        "verification": "Re-ranked by priorities: weather, proximity, cost. Weights applied: weather=1.00."
+      }
+    ],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve details for 85 Fengshan Centre based on current context and preferences."
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}

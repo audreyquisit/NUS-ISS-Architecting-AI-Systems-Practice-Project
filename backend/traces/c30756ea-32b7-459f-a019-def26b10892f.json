@@ -1,0 +1,153 @@
+{
+  "request_id": "c30756ea-32b7-459f-a019-def26b10892f",
+  "timestamp": "2026-10-07T16:47:39.513010+00:00",
+  "response": {
+    "reply": "I'm sorry, but there is insufficient information to provide a specific food recommendation in Bedok. The data available does not include verified menu items or stalls, and there is no location evidence due to authentication issues with OneMap. If you have specific preferences or are open to exploring other areas, please let me know, and I can assist you further.",
+    "structured": {
+      "parsed_request": {
+        "intent": "food_discovery",
+        "origin_text": "Bedok",
+        "target_centre_text": null,
+        "requested_area": "east",
+        "travel_mode": null,
+        "dietary_preferences": [],
+        "cuisine_preferences": [],
+        "menu_item_preferences": [],
+        "excluded_menu_item_ids": [],
+        "stall_name_preferences": [],
+        "budget_amount": null,
+        "available_time_min": null,
+        "max_travel_time_min": null,
+        "max_queue_min": null,
+        "time_period": null,
+        "priorities": [],
+        "clarification_question": null,
+        "field_sources": {
+          "origin_text": "current_message",
+          "requested_area": "inferred"
+        },
+        "uncertain_fields": []
+      },
+      "worker_plan": [
+        {
+          "agent": "location",
+          "task": "Resolve food options in Bedok or nearby areas."
+        },
+        {
+          "agent": "dietary",
+          "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+        }
+      ],
+      "verified_results": [
+        {
+          "agent": "location",
+          "status": "ok",
+          "candidates": [],
+          "evidence": [],
+          "confidence": 0.5,
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "error": "Could not authenticate with OneMap.",
+          "location_required": false,
+          "payload": {
+            "agent": "location",
+            "error": "Could not authenticate with OneMap.",
+            "limitations": [
+              "OneMap location or route evidence is unavailable."
+            ],
+            "selected_centres": [],
+            "logistics": [],
+            "verified": true,
+            "verification": "centre IDs checked against the NEA catalogue"
+          },
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        }
+      ]
+    },
+    "agent_results": [
+      {
+        "agent": "location",
+        "status": "partial",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "Could not authenticate with OneMap.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "Could not authenticate with OneMap.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ]
+        }
+      }
+    ],
+    "parsed_request": {
+      "intent": "food_discovery",
+      "origin_text": "Bedok",
+      "target_centre_text": null,
+      "requested_area": "east",
+      "travel_mode": null,
+      "dietary_preferences": [],
+      "cuisine_preferences": [],
+      "menu_item_preferences": [],
+      "excluded_menu_item_ids": [],
+      "stall_name_preferences": [],
+      "budget_amount": null,
+      "available_time_min": null,
+      "max_travel_time_min": null,
+      "max_queue_min": null,
+      "time_period": null,
+      "priorities": [],
+      "clarification_question": null,
+      "field_sources": {
+        "origin_text": "current_message",
+        "requested_area": "inferred"
+      },
+      "uncertain_fields": []
+    },
+    "verified_results": [
+      {
+        "agent": "location",
+        "status": "ok",
+        "candidates": [],
+        "evidence": [],
+        "confidence": 0.5,
+        "limitations": [
+          "OneMap location or route evidence is unavailable."
+        ],
+        "error": "Could not authenticate with OneMap.",
+        "location_required": false,
+        "payload": {
+          "agent": "location",
+          "error": "Could not authenticate with OneMap.",
+          "limitations": [
+            "OneMap location or route evidence is unavailable."
+          ],
+          "selected_centres": [],
+          "logistics": [],
+          "verified": true,
+          "verification": "centre IDs checked against the NEA catalogue"
+        },
+        "verified": true,
+        "verification": "centre IDs checked against the NEA catalogue"
+      }
+    ],
+    "needs_location": false,
+    "worker_plan": [
+      {
+        "agent": "location",
+        "task": "Resolve food options in Bedok or nearby areas."
+      },
+      {
+        "agent": "dietary",
+        "task": "Retrieve stall candidates, applying any dietary or cuisine constraints."
+      }
+    ]
+  }
+}
