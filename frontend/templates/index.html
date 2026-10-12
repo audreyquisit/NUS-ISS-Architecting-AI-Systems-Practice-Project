@@ -207,14 +207,25 @@
     const conversationTurns = [];
     let conversationState = {};
     let locationPermissionDeclined = false;
+    let lastRequestId = null;
+    let locationDataCache = {};
+    let lastWeather = null;
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, requestId) {
       const el = document.createElement("div");
       el.className = "message " + role;
-      // Chat is rendered as text for safety; strip bold markers because the
-      // recommendation model is instructed to use plain text, not Markdown.
       el.textContent = role === "bot" ? text.replace(/\*\*/g, "") : text;
       messagesEl.appendChild(el);
+      if (requestId) {
+        const link = document.createElement("a");
+        link.href = `/trace/${requestId}`;
+        link.textContent = "View trace";
+        link.style.display = "block";
+        link.style.fontSize = "11px";
+        link.style.color = "#6b7280";
+        link.style.marginTop = "4px";
+        el.appendChild(link);
+      }
       scrollToBottom();
     }
 
@@ -289,17 +300,17 @@
         if (!response.ok) {
           const reply = data.error || "The location request could not be completed.";
           appendMessage("bot", reply);
-          // Keep both sides of a clarification turn. Otherwise a typed place
-          // on the next turn cannot be connected to the original food request.
           conversationTurns.push({ role: "user", content: message });
           conversationTurns.push({ role: "assistant", content: reply });
           return;
         }
 
-        appendMessage("bot", data.reply || "No reply received.");
+        lastRequestId = data.request_id || null;
+        appendMessage("bot", data.reply || "No reply received.", lastRequestId);
         conversationTurns.push({ role: "user", content: message });
         conversationTurns.push({ role: "assistant", content: data.reply || "" });
         const locationData = data.location_data || {};
+        locationDataCache = locationData.selected_centres?.length ? locationData : locationDataCache;
         const parsedData = data.parsed_request || {};
         const joinedResults = (data.verified_results || []).find(
           (result) => result.agent === "candidate_join"
@@ -307,6 +318,8 @@
         const newlyRecommendedIds = (joinedResults?.candidates || [])
           .map((item) => item.menu_item_id)
           .filter(Boolean);
+        const weatherAgent = (data.verified_results || []).find(r => r.agent === "weather");
+        lastWeather = weatherAgent?.payload?.weather?.condition || lastWeather;
         conversationState = {
           ...conversationState,
           origin_label: locationData.origin_label || conversationState.origin_label,
@@ -325,6 +338,7 @@
           previous_menu_item_ids: newlyRecommendedIds.length
             ? newlyRecommendedIds
             : conversationState.previous_menu_item_ids,
+          last_weather: lastWeather,
         };
       } catch (err) {
         hideTyping();
@@ -335,12 +349,35 @@
       }
     }
 
+    async function sendHeartbeat() {
+      if (!lastRequestId) return;
+      try {
+        const response = await fetch("/api/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_state: conversationState,
+            location_data: locationDataCache,
+            current_weather: lastWeather,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (data.alerts && data.alerts.length) {
+          data.alerts.forEach((alert) => appendMessage("bot", "[ALERT] " + alert.message));
+        }
+      } catch (e) {
+        // silent
+      }
+    }
+
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const message = input.value.trim();
       if (!message) return;
       sendMessage(message);
     });
+
+    setInterval(sendHeartbeat, 120000);
   </script>
 </body>
 </html>

@@ -105,8 +105,9 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
     request.field_sources = {
         key: (
-            value.strip().casefold().replace(" ", "_")
-            if value.strip().casefold().replace(" ", "_") in allowed_sources
+            (value[0] if isinstance(value, list) else value)
+            .strip().casefold().replace(" ", "_")
+            if (value[0] if isinstance(value, list) else value).strip().casefold().replace(" ", "_") in allowed_sources
             else "inferred"
         )
         for key, value in request.field_sources.items()
@@ -130,6 +131,17 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
             request.target_centre_text = next(
                 centre["name"] for centre in catalogue if centre["id"] == centre_id
             )
+        elif not request.origin_text:
+            fallback = re.search(
+                r"\b(?:at|in|inside)\s+(.+?)"
+                r"(?=\s+(?:for|with|under|within|and|but|while)\b|[,;.!?]|$)",
+                current_message, re.I,
+            )
+            if fallback:
+                place = fallback.group(1).strip(" \t\r\n,.;:!?\"'")
+                if place:
+                    request.origin_text = place
+                    request.field_sources["origin_text"] = "current_message"
     if re.search(r"\b(other|different|another)\b", current_message, re.I):
         prior_ids = session_state.get("previous_menu_item_ids", [])
         if prior_ids:
@@ -138,15 +150,28 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
             request.menu_item_preferences = []
             request.stall_name_preferences = []
             request.cuisine_preferences = []
-    # Prevent the planner from turning a complete dish + place request into
-    # a needless yes/no loop. If the request names what to find and where to
-    # start, location resolution can proceed or ask for the genuinely missing
-    # origin itself.
+    # Prevent the planner from turning a complete request into a needless
+    # yes/no loop. A food-discovery request that names where to look is
+    # actionable: the dietary worker returns area-wide candidates when no
+    # specific dish is named, so there is nothing to clarify. Only keep a
+    # clarification when the request is genuinely unactionable - no place at
+    # all, or only an unresolved named centre.
+    unresolvable_target = False
+    if request.target_centre_text:
+        from agents.location_agent import _explicit_centre_target
+        from services.location_service import load_hawker_centres
+
+        catalogue = load_hawker_centres()
+        resolved = _explicit_centre_target(
+            request.target_centre_text, catalogue)
+        if not resolved:
+            unresolvable_target = True
+
     if (
         request.clarification_question
         and request.intent == "food_discovery"
-        and (request.menu_item_preferences or request.cuisine_preferences)
         and (request.origin_text or request.requested_area)
+        and (not request.target_centre_text or unresolvable_target)
     ):
         request.clarification_question = None
     tasks = _normalize_tasks(
@@ -323,7 +348,8 @@ def _result_envelope(agent: str, payload: dict[str, Any], **updates: Any) -> dic
 
 
 def location_worker(state: SharedState) -> dict[str, Any]:
-    task = next((item for item in state["tasks"] if item.agent == "location"), None)
+    task = next(
+        (item for item in state["tasks"] if item.agent == "location"), None)
     if task is None:
         return {"location_result": None, "needs_location": False}
     from agents.location_agent import LocationResolutionError, run
@@ -406,6 +432,7 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
     from services.hawker_service import (
         find_dietary_stalls,
         find_stalls_within_budget,
+        INFERRED_DIETS,
     )
 
     routes = [
@@ -451,7 +478,8 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         text,
     ))
     hard_max_minutes = parsed.get("max_travel_time_min")
-    default_horizon = max(1, int(os.getenv("LOCATION_DEFAULT_SEARCH_HORIZON_MIN", "30")))
+    default_horizon = max(
+        1, int(os.getenv("LOCATION_DEFAULT_SEARCH_HORIZON_MIN", "30")))
     horizon_minutes = (
         hard_max_minutes if hard_max_minutes is not None
         else None if willing_to_travel_farther
@@ -460,19 +488,19 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
 
     route_by_id = {item["centre_id"]: item for item in routes}
     if any(term in text for term in ("least walking", "less walking", "shortest walk", "walking")):
-        sort_key = lambda item: (
+        def sort_key(item): return (
             item.get("travel", {}).get("walking_distance_m")
             if item.get("travel", {}).get("walking_distance_m") is not None else float("inf"),
             item["travel"]["total_duration_min"],
         )
     elif any(term in text for term in ("few transfers", "fewer transfers", "no transfers")):
-        sort_key = lambda item: (
+        def sort_key(item): return (
             item.get("travel", {}).get("transfers")
             if item.get("travel", {}).get("transfers") is not None else float("inf"),
             item["travel"]["total_duration_min"],
         )
     else:
-        sort_key = lambda item: (
+        def sort_key(item): return (
             item["travel"]["total_duration_min"],
             item.get("travel", {}).get("walking_distance_m")
             if item.get("travel", {}).get("walking_distance_m") is not None else float("inf"),
@@ -506,7 +534,8 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
                 for item in find_stalls_within_budget(
                     budget=budget,
                     candidate_centre_ids=[centre_id],
-                    excluded_menu_item_ids=parsed.get("excluded_menu_item_ids", []),
+                    excluded_menu_item_ids=parsed.get(
+                        "excluded_menu_item_ids", []),
                 )
             }
             matches = [
@@ -528,22 +557,29 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             })
 
     if dietary_preferences:
-        location["selected_centres"] = [
-            selected for selected in initial
-            if isinstance(selected, dict)
-            and selected.get("centre_id") in {r["centre_id"] for r in within_horizon}
-        ]
-        location["search_expansion"] = {
-            "outcome": "dietary_verification_unavailable",
-            "initial_centres": initial_summary,
-            "search_horizon_min": horizon_minutes,
-            "route_checked_centre_count": len(within_horizon),
-            "note": "Menu data has no ingredient, allergen, or certification fields to verify this restriction.",
-        }
-        location.setdefault("limitations", []).append(
-            "Nearby menu entries cannot be checked against the requested dietary restriction."
-        )
-        return {"location_result": location}
+        # Only verifiable restrictions (which need structured ingredient/allergen
+        # data the source lacks) short-circuit the search. Inferred heuristics
+        # (halal, healthy, unhealthy) are matched against the catalogue's
+        # inferred dietary_tags in the normal menu search below.
+        verifiable = [
+            d for d in dietary_preferences if d not in INFERRED_DIETS]
+        if verifiable:
+            location["selected_centres"] = [
+                selected for selected in initial
+                if isinstance(selected, dict)
+                and selected.get("centre_id") in {r["centre_id"] for r in within_horizon}
+            ]
+            location["search_expansion"] = {
+                "outcome": "dietary_verification_unavailable",
+                "initial_centres": initial_summary,
+                "search_horizon_min": horizon_minutes,
+                "route_checked_centre_count": len(within_horizon),
+                "note": "Menu data has no ingredient, allergen, or certification fields to verify this restriction.",
+            }
+            location.setdefault("limitations", []).append(
+                "Nearby menu entries cannot be checked against the requested dietary restriction."
+            )
+            return {"location_result": location}
 
     matched_within = [
         (route, matching_items(route["centre_id"]))
@@ -599,8 +635,10 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         "route_candidate_pool_size": len(routes),
         "route_time_min_range": (
             [
-                min(route["travel"]["total_duration_min"] for route in within_horizon),
-                max(route["travel"]["total_duration_min"] for route in within_horizon),
+                min(route["travel"]["total_duration_min"]
+                    for route in within_horizon),
+                max(route["travel"]["total_duration_min"]
+                    for route in within_horizon),
             ] if within_horizon else []
         ),
         "requested_menu_items": menu_preferences,
@@ -655,7 +693,8 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             "Farther catalogue matches are shown for confirmation before expanding the trip."
         )
     else:
-        search_info.update({"farther_matches": [], "catalogue_is_partial": True})
+        search_info.update(
+            {"farther_matches": [], "catalogue_is_partial": True})
         location["reasoning"] = (
             "No source-backed menu match was found among the route-checked centres."
         )
@@ -674,7 +713,8 @@ def dispatch_workers(state: SharedState):
         and not (state.get("location_result") or {}).get("selected_centres")
     ):
         return "verify_results"
-    tasks = [task for task in state.get("tasks", []) if task.agent != "location"]
+    tasks = [task for task in state.get(
+        "tasks", []) if task.agent != "location"]
     if not tasks:
         return "verify_results"
     return [
@@ -742,7 +782,8 @@ def worker(state: WorkerState) -> dict[str, Any]:
         )
     elif task.agent == "weather":
         from agents.weather_agent import run
-        result = run(task.task, parsed_request=parsed, candidate_centres=centre_names)
+        result = run(task.task, parsed_request=parsed,
+                     candidate_centres=centre_names)
     else:
         result = {"agent": task.agent, "error": "Unknown worker."}
     result.setdefault("task", task.task)
@@ -815,7 +856,8 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
         centre_id = candidate.get("hawker_centre_id")
         if selected_ids and centre_id not in selected_ids:
             continue
-        grouped.setdefault(str(centre_id or candidate.get("hawker_centre") or ""), []).append(candidate)
+        grouped.setdefault(str(centre_id or candidate.get(
+            "hawker_centre") or ""), []).append(candidate)
 
     if named_stalls:
         selected_names = {item.get("stall_name") for item in named_stalls}
@@ -853,7 +895,8 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
     centre_names = {}
     for rows in queue_candidates:
         if rows.get("hawker_centre_id"):
-            centre_names[str(rows["hawker_centre_id"])] = rows.get("hawker_centre", "")
+            centre_names[str(rows["hawker_centre_id"])
+                         ] = rows.get("hawker_centre", "")
 
     origin = location.get("origin_label")
     heading = (
@@ -875,7 +918,8 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
             crowd_counts,
             key=lambda crowd: (crowd_counts[crowd], crowd),
         )
-        name = centre_names.get(centre_id) or rows[0].get("hawker_centre") or centre_id
+        name = centre_names.get(centre_id) or rows[0].get(
+            "hawker_centre") or centre_id
         average_wait = round(sum(waits) / len(waits))
         summary_lines.extend([
             f"{index}. {name}",
@@ -900,6 +944,15 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
         agent_results, state.get("parsed_request", {})
     )
     return {"verified_results": verified}
+
+
+def resolve_conflicts(state: SharedState) -> dict[str, Any]:
+    from agents.conflict_resolver import resolve_conflicts as _resolve
+    resolved = _resolve(
+        state.get("verified_results", []),
+        state.get("parsed_request", {}),
+    )
+    return {"verified_results": resolved}
 
 
 def synthesizer(state: SharedState) -> dict[str, str]:
@@ -975,11 +1028,13 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                     mode = travel.get("mode")
                     if minutes is not None:
                         mode_label = "public transport" if mode == "pt" else mode
-                        nearby.append(f"{name} (about {minutes} min by {mode_label})")
+                        nearby.append(
+                            f"{name} (about {minutes} min by {mode_label})")
                     else:
                         nearby.append(name)
                 if nearby:
-                    origin = location.get("origin_label") or "your starting point"
+                    origin = location.get(
+                        "origin_label") or "your starting point"
                     return {"final_recommendation": (
                         f"The closest route-checked hawker centres near {origin} are: "
                         f"{'; '.join(nearby)}. I don't have menu listings for these "
@@ -994,14 +1049,17 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                 or parsed.get("stall_name_preferences", [])
                 or parsed.get("cuisine_preferences", [])
             )
-            request_label = ", ".join(preference) if preference else "options matching your request"
-            origin = location.get("origin_label") or parsed.get("origin_text") or "your starting point"
+            request_label = ", ".join(
+                preference) if preference else "options matching your request"
+            origin = location.get("origin_label") or parsed.get(
+                "origin_text") or "your starting point"
             horizon = expansion.get("search_horizon_min")
 
             if outcome == "farther_match_requires_approval":
                 farther = expansion.get("farther_matches", [])
                 nearest = farther[0] if farther else {}
-                centre_name = nearest.get("centre_name") or "a farther hawker centre"
+                centre_name = nearest.get(
+                    "centre_name") or "a farther hawker centre"
                 minutes = nearest.get("travel_time_min")
                 mode = nearest.get("travel_mode")
                 mode_label = "public transport" if mode == "pt" else mode or "the selected travel mode"
@@ -1072,6 +1130,7 @@ def build_workflow():
     graph.add_node("expand_menu_search", expand_menu_search)
     graph.add_node("worker", worker)
     graph.add_node("verify_results", verify_results_node)
+    graph.add_node("resolve_conflicts", resolve_conflicts)
     graph.add_node("synthesizer", synthesizer)
     graph.add_node("respond_without_workers", respond_without_workers)
     graph.add_node("clarification_response", clarification_response)
@@ -1091,7 +1150,8 @@ def build_workflow():
         "worker", "verify_results", "location_required_response",
     ])
     graph.add_edge("worker", "verify_results")
-    graph.add_edge("verify_results", "synthesizer")
+    graph.add_edge("verify_results", "resolve_conflicts")
+    graph.add_edge("resolve_conflicts", "synthesizer")
     graph.add_edge("synthesizer", END)
     graph.add_edge("respond_without_workers", END)
     graph.add_edge("clarification_response", END)

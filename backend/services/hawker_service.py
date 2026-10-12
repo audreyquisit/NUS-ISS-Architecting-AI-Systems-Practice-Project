@@ -12,6 +12,27 @@ from services.location_service import load_hawker_centres
 STALLS_FILE = Path(__file__).resolve().parents[1] / "data" / "hawker_stall.json"
 MOCK_STALLS_FILE = Path(__file__).resolve().parents[1] / "data" / "hawker_stall_mock.json"
 
+# Dietary preferences that require structured data (ingredients, allergens,
+# certification) to verify. The Wak-Wak catalogue does not have these fields,
+# so any verifiable restriction cannot be confirmed from the source alone and
+# must short-circuit to an empty result.
+# Values are in _normalise form (spaces, no hyphens) to match how diets
+# are normalised before lookup in find_dietary_stalls and the verifier.
+VERIFIABLE_DIETS = frozenset({
+    "vegetarian", "vegan", "no pork", "no beef",
+    "gluten free", "dairy free", "nut free", "seafood free",
+})
+
+# Diets that are *inferred* from stall name/category heuristics (see
+# scripts/infer_dietary_tags.py) and stored in each stall's ``dietary_tags``
+# list. They are additive, source-derived hints — not certification — so they
+# can be matched against catalogue entries, but they must be labelled as
+# inferred in any recommendation.
+#   halal    - category/name mentions Malay or Muslim
+#   healthy  - Yong Tau Foo / vegetable-centric dishes
+#   unhealthy- fried items, desserts / snacks
+INFERRED_DIETS = frozenset({"halal", "healthy", "unhealthy"})
+
 
 def _normalise(value: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())
@@ -88,9 +109,11 @@ def _menu_catalogue() -> tuple[dict[str, Any], ...]:
                 "price_status": item.get("price_status", "unparsed"),
                 "price_basis": item.get("price_basis", "unknown"),
                 "price_raw": item.get("price_raw", item.get("price")),
-                # The source has no ingredient, allergen or dietary claim fields.
-                "dietary_tags": [],
-                "dietary_suitable": None,
+                # Read dietary tags from source data (may be enriched from HPB
+                # Healthier Dining or other external sources). Tags are added
+                # at the stall level and inherited by each menu item.
+                "dietary_tags": item.get("dietary_tags", stall.get("dietary_tags", [])),
+                "dietary_suitable": item.get("dietary_suitable", None),
                 "source_url": stall.get("url"),
                 "data_origin": stall.get("data_origin", "wak_wak_source"),
                 "is_mock": bool(stall.get("is_mock", False)),
@@ -201,9 +224,13 @@ def find_dietary_stalls(
         candidate_centre_ids=candidate_centre_ids,
     )
 
-    # Never derive allergy/halal/vegetarian claims from a dish or stall name.
-    # This catalogue has no structured dietary evidence to verify those claims.
-    if diets:
+    # Only short-circuit for verifiable dietary restrictions (vegetarian, vegan,
+    # halal, gluten-free, etc.) that require structured ingredient/allergen data
+    # to confirm. Inferred heuristics such as "healthy", "unhealthy", and
+    # "halal" (when derived from Malay/Muslim stall signals) are matched
+    # against the catalogue's inferred dietary_tags instead.
+    verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS and d not in INFERRED_DIETS]
+    if verifiable_diets:
         return []
 
     filtered = []
@@ -224,14 +251,19 @@ def find_dietary_stalls(
             searchable = _normalise(item["menu_item_name"])
             if not all(_normalise(term) in searchable for term in dishes):
                 continue
+        item_tags = set(item.get("dietary_tags", []))
+        matched_diets = [d for d in diets if d in item_tags]
+        if diets and not matched_diets:
+            # An inferred diet was requested but this item does not carry it.
+            continue
         filtered.append({
             **item,
-            "matched_dietary_tags": [],
+            "matched_dietary_tags": sorted(matched_diets),
             "matched_cuisine": [
                 preference for preference in cuisines
                 if _matches_category(preference, categories)
             ],
-            "dietary_suitable": None if not diets else False,
+            "dietary_suitable": True if matched_diets else None,
             "preference_score": 1.0 if cuisines or dishes else 0.0,
             "reason": "Menu item matched the source category or requested dish name.",
         })

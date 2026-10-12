@@ -1,6 +1,6 @@
 """Structured planner contracts shared by the orchestrator and its workers."""
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,7 +33,7 @@ class ParsedRequest(BaseModel):
     clarification_question: Optional[str] = None
     # The planner may phrase these labels with spaces despite the prompt's
     # underscore schema; normalize after parsing instead of rejecting the turn.
-    field_sources: dict[str, str] = Field(default_factory=dict)
+    field_sources: dict[str, Any] = Field(default_factory=dict)
     uncertain_fields: list[str] = Field(default_factory=list)
 
 

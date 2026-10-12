@@ -12,6 +12,17 @@ def home():
     return render_template("index.html")
 
 
+@app.route("/trace/<request_id>")
+def trace_viewer(request_id):
+    try:
+        response = requests.get(f"{BACKEND_URL}/api/trace/{request_id}", timeout=30)
+        if response.status_code != 200:
+            return "Trace not found", 404
+        return render_template("trace.html", trace=response.json())
+    except requests.RequestException:
+        return "Backend call failed", 502
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     payload = request.get_json(silent=True) or {}
@@ -29,6 +40,22 @@ def chat():
                 "conversation_context": payload.get("conversation_context", {}),
             },
             timeout=90,
+        )
+        return (jsonify(response.json()), response.status_code)
+    except requests.RequestException as exc:
+        return jsonify({"error": f"Backend call failed: {exc}"}), 502
+    except ValueError:
+        return jsonify({"error": "Backend returned an invalid response."}), 502
+
+
+@app.route("/api/heartbeat", methods=["POST"])
+def heartbeat():
+    payload = request.get_json(silent=True) or {}
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/api/heartbeat",
+            json=payload,
+            timeout=30,
         )
         return (jsonify(response.json()), response.status_code)
     except requests.RequestException as exc:
