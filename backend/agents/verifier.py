@@ -3,7 +3,9 @@
 from typing import Any
 
 from services.location_service import load_hawker_centres
-from services.hawker_service import get_menu_item_record, get_menu_stall_record
+from services.hawker_service import (
+    VERIFIABLE_DIETS, INFERRED_DIETS, _normalise, get_menu_item_record, get_menu_stall_record,
+)
 
 
 def _verified_location(result: dict[str, Any]) -> dict[str, Any]:
@@ -170,10 +172,21 @@ def _verify_worker_result(
             })
         candidates = source_candidates
     if agent == "dietary":
-        diets = request.get("dietary_preferences", [])
+        diets = [d.casefold() for d in request.get("dietary_preferences", [])]
         cuisines = [value.casefold() for value in request.get("cuisine_preferences", [])]
-        if diets:
-            candidates = [item for item in candidates if item.get("dietary_suitable") is True]
+        # Verifiable restrictions (vegetarian, vegan, gluten-free, etc.) require
+        # structured data the source lacks, so they short-circuit to empty.
+        # Inferred heuristics (halal, healthy, unhealthy) are matched against
+        # each item's inferred dietary_tags.
+        verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS and d not in INFERRED_DIETS]
+        inferred_diets = [d for d in diets if d in INFERRED_DIETS]
+        if verifiable_diets:
+            candidates = []
+        if inferred_diets:
+            candidates = [
+                item for item in candidates
+                if any(d in item.get("dietary_tags", []) for d in inferred_diets)
+            ]
         if cuisines:
             candidates = [
                 item for item in candidates

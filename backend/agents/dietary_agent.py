@@ -1,6 +1,6 @@
 from typing import Optional
 
-from services.hawker_service import find_dietary_stalls
+from services.hawker_service import find_dietary_stalls, INFERRED_DIETS, VERIFIABLE_DIETS
 
 
 DIETARY_KEYWORDS = (
@@ -14,7 +14,12 @@ DIETARY_KEYWORDS = (
     "dairy-free",
     "nut-free",
     "seafood-free",
+    "healthy",
+    "unhealthy",
 )
+
+# Terms that imply a halal preference in the Singapore hawker context.
+HALAL_SYNONYMS = ("malay", "muslim")
 
 CUISINE_KEYWORDS = (
     "chinese",
@@ -52,6 +57,12 @@ def run(
     inferred_dietary = _extract_keywords(source_text, DIETARY_KEYWORDS)
     inferred_cuisine = _extract_keywords(source_text, CUISINE_KEYWORDS)
 
+    # Map halal synonyms (Malay / Muslim) onto the canonical halal tag so the
+    # catalogue's inferred halal tag can match the user's intent.
+    for synonym in HALAL_SYNONYMS:
+        if synonym in source_text and "halal" not in inferred_dietary:
+            inferred_dietary.append("halal")
+
     final_dietary = list(dietary_preferences or [])
     for pref in inferred_dietary:
         if pref not in final_dietary:
@@ -61,6 +72,15 @@ def run(
     for pref in inferred_cuisine:
         if pref not in final_cuisine:
             final_cuisine.append(pref)
+
+    # Separate verifiable restrictions (which need ingredient/allergen data
+    # the source lacks) from inferred heuristics (halal, healthy, unhealthy)
+    # that are matched against the stall's inferred dietary_tags.
+    verifiable_diets = [
+        d for d in final_dietary
+        if d in VERIFIABLE_DIETS and d not in INFERRED_DIETS
+    ]
+    inferred_diets = [d for d in final_dietary if d in INFERRED_DIETS]
 
     stalls = find_dietary_stalls(
         dietary_preferences=final_dietary,
@@ -76,16 +96,23 @@ def run(
     confidence = 0.3
     if stalls:
         if final_dietary:
-            suitable = [item for item in stalls if item.get("dietary_suitable") is True]
+            suitable = [item for item in stalls if item.get(
+                "dietary_suitable") is True]
             confidence = 0.9 if suitable else 0.6
         elif final_cuisine:
             confidence = 0.9
         else:
             confidence = 0.6
-    if final_dietary:
+    if verifiable_diets:
         limitations.append(
             "The menu source has no ingredient, allergen, or certified dietary fields; "
             "dietary suitability cannot be verified."
+        )
+    if inferred_diets:
+        limitations.append(
+            "Dietary suitability is inferred from stall name and category heuristics "
+            "(Malay/Muslim -> halal; Yong Tau Foo/vegetables -> healthy; "
+            "fried items/desserts -> unhealthy), not from structured certification data."
         )
     if candidate_centres and not stalls and not final_dietary:
         limitations.append(

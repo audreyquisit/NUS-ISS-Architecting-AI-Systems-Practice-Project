@@ -90,8 +90,10 @@ def run(
           walking time rounded to a whole minute.
         - Consider available time.
         - Consider queue length and crowd conditions.
+        - Consider dietary suitability: prefer candidates whose `dietary_suitable` is true and whose `matched_dietary_tags` match the user's stated restriction; when `supporting_agents` includes "dietary", note which dietary tags were matched.
         - Prefer lower queue_minutes and better queue_score when other factors are similar.
         - Consider weather.
+        - Mention dietary suitability alongside proximity, price, and queue conditions in the selection rationale when the dietary agent participated.
         - Treat only results marked verified=true as usable evidence.
         - For food discovery, if `candidate_join` is empty or missing, do not
           name a stall. If location data contains `search_expansion`, explain the
@@ -112,6 +114,8 @@ def run(
         - Do not invent or silently repair menu items or prices.
         - Do not invent queue times.
         - Explain why the recommendation was selected.
+        - The selection rationale must mention dietary, price/budget, queue,
+          proximity/walking, and weather factors when evidence for them exists.
 
         If there is insufficient information, say so.
         """

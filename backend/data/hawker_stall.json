@@ -2345,7 +2345,10 @@
       "menu_text": "signature tofully bowl $4.30\n\nhealthy tofully bowl $4.30\n\nfried tofully bowl $4.30\n\nlaksa tofully bowl $4.90\n\nlady's finger (add on) $0.70",
       "menu_images": [],
       "stall_id": "wakwak_745",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/709/",
@@ -4074,7 +4077,10 @@
       "menu_text": "Dosa\n\nPrata\n\nChicken Set Meal",
       "menu_images": [],
       "stall_id": "wakwak_1421",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1420/",
@@ -5310,7 +5316,10 @@
       "menu_text": "Cheese Prata with Egg $2.50\n\nMushroom Prata with Egg & Cheese $3.50\n\nMaggi Murtabak $5.00\n\nRoti John with Cheese $5.00\n\nNasi/Bee Hoon Goreng Ikan Bilis $4.00",
       "menu_images": [],
       "stall_id": "wakwak_967",
-      "hawker_centre_id": "maxwell_food_centre"
+      "hawker_centre_id": "maxwell_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/896/",
@@ -5450,7 +5459,10 @@
       "menu_text": "Set A $3.00\n\nSet B $4.00",
       "menu_images": [],
       "stall_id": "wakwak_897",
-      "hawker_centre_id": "maxwell_food_centre"
+      "hawker_centre_id": "maxwell_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/900/",
@@ -6802,7 +6814,10 @@
       "menu_text": "1 Meat 2 Vegetables $3.00\n\n1 Meat 3 Vegetable $3.50\n\n2 Meat 1 Vegetable $4.00\n\n2 Meat 2 Vegetables $4.50\n\n2 Meat 3 Vegetables $5.00",
       "menu_images": [],
       "stall_id": "wakwak_943",
-      "hawker_centre_id": "maxwell_food_centre"
+      "hawker_centre_id": "maxwell_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/945/",
@@ -7006,7 +7021,10 @@
       "menu_text": "Minimum 6 pcs + Rice/Noodle $4.00\n\nEach piece $0.60\n\nLaksa Gravy $0.80\n\nRice/Noodle $0.60\n\nMala Sauce $1.50",
       "menu_images": [],
       "stall_id": "wakwak_946",
-      "hawker_centre_id": "maxwell_food_centre"
+      "hawker_centre_id": "maxwell_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/860/",
@@ -7458,7 +7476,10 @@
       "menu_text": "Fried Oyster (Small) $5\n\nSeafood Fried Kway Teow (Small) $5\n\nFried Hokkien Prawn Noodle (Small) $4\n\nOyster Omelette (Small) $6",
       "menu_images": [],
       "stall_id": "wakwak_874",
-      "hawker_centre_id": "maxwell_food_centre"
+      "hawker_centre_id": "maxwell_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/875/",
@@ -11349,7 +11370,10 @@
       "menu_text": "Fried oyster $4.00 to $10.00\n\nOyster egg $6.00 $10.00",
       "menu_images": [],
       "stall_id": "wakwak_1306",
-      "hawker_centre_id": "east_coast_lagoon_food_village"
+      "hawker_centre_id": "east_coast_lagoon_food_village",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1337/",
@@ -11987,7 +12011,10 @@
       "menu_text": "Fried kway teow with cockles $5.00 to $10.00\n\nFried oysters $6.00 to $10.00\n\nCarrot cake $4.00 to $6.00",
       "menu_images": [],
       "stall_id": "wakwak_1302",
-      "hawker_centre_id": "east_coast_lagoon_food_village"
+      "hawker_centre_id": "east_coast_lagoon_food_village",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1331/",
@@ -12556,7 +12583,10 @@
       "menu_text": "Charcoal fried Hokkien prawn noodles $6.00 to $15.00\n\nBBQ sotong $10.00 to $20.00\n\nPork belly satay 1pc $1.50",
       "menu_images": [],
       "stall_id": "wakwak_1313",
-      "hawker_centre_id": "east_coast_lagoon_food_village"
+      "hawker_centre_id": "east_coast_lagoon_food_village",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1314/",
@@ -13368,7 +13398,10 @@
       "menu_text": "Fried carrot cake $4.00 to $6.00\n\nFried oyster $5.00 to $10.00\n\nOyster omelette $8.00 to $10.00",
       "menu_images": [],
       "stall_id": "wakwak_1320",
-      "hawker_centre_id": "east_coast_lagoon_food_village"
+      "hawker_centre_id": "east_coast_lagoon_food_village",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1321/",
@@ -13606,7 +13639,10 @@
       "menu_text": "Baby squid $12.00 to $18.00\n\nChili/black pepper sotong $12.00 to $20.00\n\nBBQ stingray $15.00",
       "menu_images": [],
       "stall_id": "wakwak_1323",
-      "hawker_centre_id": "east_coast_lagoon_food_village"
+      "hawker_centre_id": "east_coast_lagoon_food_village",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1312/",
@@ -14436,7 +14472,10 @@
       "menu_text": "Fried Kway Teow (Small) $3.00\n\nFried Kway Teow (Large) $4.00",
       "menu_images": [],
       "stall_id": "wakwak_801",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/804/",
@@ -14998,7 +15037,10 @@
       "menu_text": "You Tiao $0.90\n\nBean Paste Sesame Ball $0.90\n\nPeanut Sesame Ball $0.90\n\nButterfly Bun $0.90\n\nHam Chee Peng $0.90",
       "menu_images": [],
       "stall_id": "wakwak_822",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/825/",
@@ -16854,7 +16896,10 @@
       "menu_text": "Set A: Five plus One (Salad base, 5 toppings and one meat) $5.40\n\nSet B: Six no Meat (Salad base, 6 toppings) $4.90",
       "menu_images": [],
       "stall_id": "wakwak_1074",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1073/",
@@ -17150,7 +17195,10 @@
       "menu_text": "Basic Salad (Mixed Salad Leaves + 5 Basic Toppings) $4.90\n\n$0.50 for each additional topping\n\n$0.50 for each additional serving of dressing",
       "menu_images": [],
       "stall_id": "wakwak_1045",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1044/",
@@ -17274,7 +17322,10 @@
       "menu_text": "Sin Chew Bee Hoon $3.50\n\nVegetarian Laksa $3.50\n\nWanton Noodle $3.50\n\nHor Fun $3.50\n\nFried Rice $3.50",
       "menu_images": [],
       "stall_id": "wakwak_1006",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1005/",
@@ -17836,7 +17887,10 @@
       "menu_text": "Traditional Bee Hoon Set $2.50\n\nCabbage $0.50\n\nVegetarian Char Siew $0.50\n\nFried Tofu $0.80\n\nVegetarian goose $1.00",
       "menu_images": [],
       "stall_id": "wakwak_1000",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/997/",
@@ -18400,7 +18454,10 @@
       "menu_text": "Mee Goreng/Maggi Goreng $4.00\n\nMutton Chop $6.00\n\nRoti Prata (minimum 2) $2.00\n\nRoti Prata Egg $1.50\n\nNasi Goreng Ikan Bilis $4.50",
       "menu_images": [],
       "stall_id": "wakwak_989",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/988/",
@@ -18956,7 +19013,10 @@
       "menu_text": "Gado-Gado $4.00\n\nMee Bakso (Beef Ball Noodle) $4.00\n\nAyam Penyet $5.00\n\nAyam Bakar $5.00\n\nSagu Gula Melaka/Jongkong/Burbur Som-Som/Nagasari jagung/Agar-agar Gudir/Sagu Delima $1.20",
       "menu_images": [],
       "stall_id": "wakwak_983",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/982/",
@@ -19018,7 +19078,10 @@
       "menu_text": "Mee Goreng $3.00 (and above)\n\nNasi Lemak $3.00 (and above)\n\nNasi Padang $3.00 (and above)",
       "menu_images": [],
       "stall_id": "wakwak_982",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/981/",
@@ -20019,7 +20082,10 @@
       "menu_text": "Yong Tau Foo 5pcs + Chee Cheong Fun $4.00\n\nYong Tau Foo 5pcs + Noodle $3.80\n\nAdditional piece of ingredient $0.60\n\nChee Cheong Fun per piece $1.00",
       "menu_images": [],
       "stall_id": "wakwak_1014",
-      "hawker_centre_id": "amoy_street_food_centre"
+      "hawker_centre_id": "amoy_street_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1039/",
@@ -23430,7 +23496,10 @@
       "menu_text": "Vegetarian Bee Hoon - $2.50\n\nFried Popiah - $0.80",
       "menu_images": [],
       "stall_id": "wakwak_177",
-      "hawker_centre_id": "tiong_bahru_market"
+      "hawker_centre_id": "tiong_bahru_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/178/",
@@ -26020,7 +26089,10 @@
       "menu_text": "Yong Tau Foo - $3/4\n\nBak Chor Mee - $3/4\n\nFishball Noodle - $3/4",
       "menu_images": [],
       "stall_id": "wakwak_203",
-      "hawker_centre_id": "tiong_bahru_market"
+      "hawker_centre_id": "tiong_bahru_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/204/",
@@ -26214,7 +26286,10 @@
       "menu_text": "Nasi Goreng Ikan Bilis - $4\n\nMee Goreng - $4\n\nRoti Prata - $1\n\nRoti Prata Egg - $1.50\n\nChicken Biryani - $5",
       "menu_images": [],
       "stall_id": "wakwak_205",
-      "hawker_centre_id": "tiong_bahru_market"
+      "hawker_centre_id": "tiong_bahru_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/206/",
@@ -27407,7 +27482,10 @@
       "menu_text": "Fried Oyster - $4/5/6/8/10\n\nOyster Omelette - $6/8/10\n\nChwee Kueh - $0.30 per pc min. 4\n\nChee Cheong Fun - $1\n\nYam Cake - $1",
       "menu_images": [],
       "stall_id": "wakwak_220",
-      "hawker_centre_id": "tiong_bahru_market"
+      "hawker_centre_id": "tiong_bahru_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/221/",
@@ -28461,7 +28539,10 @@
       "menu_text": "Yong Tau Foo (min. 5 items) - $3.50\n\nAdd Laksa - $0.50\n\nNoodles/Rice - $0.50",
       "menu_images": [],
       "stall_id": "wakwak_224",
-      "hawker_centre_id": "tiong_bahru_market"
+      "hawker_centre_id": "tiong_bahru_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/233/",
@@ -30969,7 +31050,10 @@
       "menu_text": "Char Kway Teow small $4.00\n\nChar Kway Teow medium $5.00\n\nChar Kway Teow large $6.00",
       "menu_images": [],
       "stall_id": "wakwak_372",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/373/",
@@ -31569,7 +31653,10 @@
       "menu_text": "Char Kway Teow small $3.00\n\nChar Kway Teow large $3.00",
       "menu_images": [],
       "stall_id": "wakwak_402",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/403/",
@@ -32991,7 +33078,10 @@
       "menu_text": "Carrot Cake Sticks \n\n$1.00 for 6 \n\n$1.50 for 9 \n\n$2.00 for 13\n\n$3.00 for 20\n\nPng Kueh $1.00\n\nSoon Kueh $1.00",
       "menu_images": [],
       "stall_id": "wakwak_421",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/422/",
@@ -33709,7 +33799,10 @@
       "menu_text": "Lontong $3.00\n\nMee Rebus $3.00\n\nMee Siam $3.00\n\nMee Goreng $3.00\n\nMee Soto $3.00\n\nNasi Lemak $3.00",
       "menu_images": [],
       "stall_id": "wakwak_430",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/431/",
@@ -35043,7 +35136,10 @@
       "menu_text": "4 pcs Yong Tau Foo with Bee Hoon/Noodle $3.00\n\n6 pcs Yong Tau Foo $3.00\n\nIkan Bilis $0.70\n\nBittergourd/Brinjal $0.70\n\nFishcake $0.80\n\nAbalone $1.00",
       "menu_images": [],
       "stall_id": "wakwak_482",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/835/",
@@ -36705,7 +36801,10 @@
       "menu_text": "Vegetarian food $2~$5",
       "menu_images": [],
       "stall_id": "wakwak_771",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/768/",
@@ -36985,7 +37084,10 @@
       "menu_text": "Spinach seafood soup $3.80\n\nSpinach century & salted egg soup $3.80\n\nSpinach yong tau foo soup $3.80",
       "menu_images": [],
       "stall_id": "wakwak_765",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/763/",
@@ -37393,7 +37495,10 @@
       "menu_text": "Char Siew Rice $3.00\n\nChicken Rice $3.00\n\nNoodles $3.00\n\nVegetarian Fried Chicken $3.00\n\nLaksa $3.00 (Available only on Wednesdays and Saturdays)\n\nLor Mee $3.00 (Available only on Thursdays)",
       "menu_images": [],
       "stall_id": "wakwak_488",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/759/",
@@ -37967,7 +38072,10 @@
       "menu_text": "Bee hoon/noodle/porridge $1.20\n\nVegetarian dishes $3.00 (and above)\n\nSoup of the day $0.70",
       "menu_images": [],
       "stall_id": "wakwak_642",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/640/",
@@ -38623,7 +38731,10 @@
       "menu_text": "You Tiao $0.70\n\nButterfly Fritter $0.70\n\nSaltish Bun $0.70\n\nGreen Bean Fritter $0.70\n\nRed Bean Fritter $0.70",
       "menu_images": [],
       "stall_id": "wakwak_491",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/595/",
@@ -39499,7 +39610,10 @@
       "menu_text": "Seafood fried kway teow mee $5.00\n\nCockles fried kway teow mee $3.00",
       "menu_images": [],
       "stall_id": "wakwak_323",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/492/",
@@ -40909,7 +41023,10 @@
       "menu_text": "Set 1 $2.20\n\nSet 3 $2.50\n\nSet 4 $3.00\n\nCurry Vegetable $3.00",
       "menu_images": [],
       "stall_id": "wakwak_559",
-      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market"
+      "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/555/",
@@ -42251,7 +42368,10 @@
       "menu_text": "Roti prata $2,\n\nChicken briyani $5.50,\n\nMutton curry $5,\n\n2 pieces prata + chicken curry $5",
       "menu_images": [],
       "stall_id": "wakwak_584",
-      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market"
+      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/498/",
@@ -44620,7 +44740,10 @@
       "menu_text": "Tepong goreng $0.80,\n\nBig prawn $2,\n\nParu $1.50,\n\nFish cake $1.50,\n\nPrawn cake $1.50,\n\nTepong potato $0.80,\n\nPotato $0.80,\n\nTempeh $0.80",
       "menu_images": [],
       "stall_id": "wakwak_607",
-      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market"
+      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/509/",
@@ -44966,7 +45089,10 @@
       "menu_text": "Dum briyani chicken $5.50,\n\nDum briyani mutton $5.50,\n\nDum briyani fish $5.50",
       "menu_images": [],
       "stall_id": "wakwak_512",
-      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market"
+      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/445/",
@@ -46455,7 +46581,10 @@
       "menu_text": "Vegetarian chicken rice,\n\nVegetarian laksa,\n\nVegetarian kway chap,\n\nEconomic Bee Hoon,\n\nEconomic Kway Teow\n\n\n\n*No price list as their menu changes every day",
       "menu_images": [],
       "stall_id": "wakwak_620",
-      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market"
+      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/623/",
@@ -48481,7 +48610,10 @@
       "menu_text": "Yong Tau Foo Bee Hoon Soup $3/$4/$5,\n\nYong Tau Foo Laksa $4/$5,\n\nLaksa $3,\n\nChicken nasi briyani $5",
       "menu_images": [],
       "stall_id": "wakwak_443",
-      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market"
+      "hawker_centre_id": "buffalo_road_blk_665_tekka_centre_zhu_jiao_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/444/",
@@ -50302,7 +50434,10 @@
       "menu_text": "Fried Oysters (Small) $5\n\nDeep Fried Oyster (Small) $10\n\nFried Oyster with Chilli (Small) $10\n\nOyster Egg (Small) $8",
       "menu_images": [],
       "stall_id": "wakwak_855",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/856/",
@@ -51735,7 +51870,10 @@
       "menu_text": "Satay $0.70\n\nChicken Wing $1.50\n\nCalamari $15.00 (and above)\n\nFried Rice $6.00 (and above)\n\nSeafood Fried Noodle $6.00 (and above)",
       "menu_images": [],
       "stall_id": "wakwak_31",
-      "hawker_centre_id": "newton_food_centre"
+      "hawker_centre_id": "newton_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/32/",
@@ -53025,7 +53163,10 @@
       "menu_text": "Fried Prawn Noodle $5.00\n\nCarrot Cake $4.00",
       "menu_images": [],
       "stall_id": "wakwak_327",
-      "hawker_centre_id": "newton_food_centre"
+      "hawker_centre_id": "newton_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/328/",
@@ -54567,7 +54708,10 @@
       "menu_text": "Oyster Omelette $6.00\n\nCarrot Cake $3.00\n\nSatay $0.70 (Min. 10),\n\nChicken Wing $1.40 (Min. 3)\n\nOtah $1.20",
       "menu_images": [],
       "stall_id": "wakwak_116",
-      "hawker_centre_id": "newton_food_centre"
+      "hawker_centre_id": "newton_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/117/",
@@ -56751,7 +56895,10 @@
       "menu_text": "Oyster omelette $10.00",
       "menu_images": [],
       "stall_id": "wakwak_50",
-      "hawker_centre_id": "newton_food_centre"
+      "hawker_centre_id": "newton_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/48/",
@@ -59391,7 +59538,10 @@
       "menu_text": "Yong Tau Foo (Soup/Dry) 6 pieces $4.80,\n\nAdditional Pieces $0.70,\n\nBee Hoon/Kway Teow/Noodle/Rice $0.70,\n\nCurry/Tom Yam/Hot & Spicy/Satay Gravy $1.00,\n\nYong Tau Foo (Soup/Dry) 6 pieces + Rice/Noodle $5.50,\n\nCurry/Tom Yam/Hot & Spicy/Satay Gravy Yong Tau Foo (6 pieces) $5.80,\n\nCurry/Tom Yam/Hot & Spicy/Satay Gravy Yong Tau Foo (6 pieces) + Rice/Noodle $6.50",
       "menu_images": [],
       "stall_id": "wakwak_77",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/92/",
@@ -60937,7 +61087,10 @@
       "menu_text": "Fried Prawn Noodles (S/M/L) $5.80/$7.80/$9.80,\n\nChar Kway Teow (S/M/L) $5.50/$7.50/$9.50,\n\nBeef Char Kway Teow (S/M/L) $7.30/$9.30/$11.00,\n\nFried Oyster Omelette (S/M/L) $6.00/$8.00/$10.00,\n\nFried King Prawn Noodles (S/M/L) $10.00/$15.00/$20.00,\n\nSingapore Seafood Char Kway Teow (S/M/L) $6.80/$8.80/$10.80",
       "menu_images": [],
       "stall_id": "wakwak_86",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/99/",
@@ -62900,7 +63053,10 @@
       "menu_text": "Black Sesame Ball $1.30,\n\nCurry Puff $1.80,\n\nFried Banana Fritter $2,\n\nSoya Bean Curd with Brown Sugar $2.20",
       "menu_images": [],
       "stall_id": "wakwak_960",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/961/",
@@ -63916,7 +64072,10 @@
       "menu_text": "Yong Tau Foo (minimum 6 pcs) + Rice/Noodle $6.40.\n\nYong Tau Foo ( minimum 7 pcs) $6.30,\n\nYong Tau Foo ( minimum 6 pcs) + Chee Cheong Fun $6.60,\n\nChee Cheong Fun (ala carte minimum 2 pcs) $3.00",
       "menu_images": [],
       "stall_id": "wakwak_1090",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1091/",
@@ -64206,7 +64365,10 @@
       "menu_text": "Signature Fried Prawn Noodles $6.50/$8.50/$10.00,\n\nSingapore Style Char Kway Teow $$6.50/$8.00/$10.00,\n\nFried Carrot Cake $5.50/$7.50/$9.50,\n\nOyster Omelette $7.50/$9.50/$11.00",
       "menu_images": [],
       "stall_id": "wakwak_1093",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1094/",
@@ -65728,7 +65890,10 @@
       "menu_text": "Roti Prata $1.60,\n\nNasi Goreng Merah $4,\n\nRoti John $4,\n\nMurtabak Daging (Beef)/ Ayam (Chicken) $6/8/10/12,\n\nMurtabak Sardine $5/6/8/10",
       "menu_images": [],
       "stall_id": "wakwak_156",
-      "hawker_centre_id": "geylang_serai_market"
+      "hawker_centre_id": "geylang_serai_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/132/",
@@ -67920,7 +68085,10 @@
       "menu_text": "Gandos Original/Ubi $2.50,\n\nAgar-agar $2.50,\n\nSuji $2.50,\n\nSambal Ijo/Pedas/Terasi/Kemiri/Bawang $3.50,\n\nGado-gado $5",
       "menu_images": [],
       "stall_id": "wakwak_142",
-      "hawker_centre_id": "geylang_serai_market"
+      "hawker_centre_id": "geylang_serai_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/141/",
@@ -68316,7 +68484,10 @@
       "menu_text": "Mee Goreng Combo $8,\n\nMutton/Chicken Chop $6,\n\nRoti John $3.50-$8,\n\nMee/BeeHoon/Kway Teow/Nasi/Maggie Goreng Seafood $5,\n\nMutton/Chicken Steak Kuah (Noodle soup) $6",
       "menu_images": [],
       "stall_id": "wakwak_22",
-      "hawker_centre_id": "geylang_serai_market"
+      "hawker_centre_id": "geylang_serai_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/23/",
@@ -68387,7 +68558,11 @@
       "menu_text": "Yong Tau Foo $0.30-$3 per ingredient,\n\nMee Bandung/Soup/Bakso $3.90-$4,\n\nMee/Nasi Goreng (Fried Noodle/Rice) $4-$4.80",
       "menu_images": [],
       "stall_id": "wakwak_23",
-      "hawker_centre_id": "geylang_serai_market"
+      "hawker_centre_id": "geylang_serai_market",
+      "dietary_tags": [
+        "halal",
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/24/",
@@ -68611,7 +68786,10 @@
       "menu_text": "Mee/Bee Hoon/Kway Teow/Magggie/Nasi Goreng Combo,\n\nTulang Merah Special,\n\nRoti John with Mutoon/Chicken/Steak/Veg with or without cheese,\n\nSup Kambing with Mee/Bee Hoon/Kway Teow/Maggie",
       "menu_images": [],
       "stall_id": "wakwak_122",
-      "hawker_centre_id": "geylang_serai_market"
+      "hawker_centre_id": "geylang_serai_market",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1120/",
@@ -69090,7 +69268,10 @@
       "menu_text": "Nasi Lemak $3~\n\nSambal Hijali $5",
       "menu_images": [],
       "stall_id": "wakwak_1128",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1129/",
@@ -70776,7 +70957,10 @@
       "menu_text": "Mee Goreng $4.0\n\nBee Hoon Goreng $4.0\n\nKuay Teow Goreng $4.0\n\nMaggie Goreng Chicken $4.0\n\nMaggie Goreng Mutton $4.0\n\nBlack Kuay Teow $4.0\n\nNasi Goreng Merah $4.0\n\nNasi Goreng Ayam $4.5\n\n\n\nRoti John $4.0\n\n\n\nMutton/Chicken Chop $5.5\n\nMutton Steak $5.5\n\nMutton Soup $4.0\n\n\n\nRojak",
       "menu_images": [],
       "stall_id": "wakwak_1139",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1140/",
@@ -71220,7 +71404,10 @@
       "menu_text": "Black Carrot Cake $3 / $4 / $5\n\nWhite Carrot Cake $3 / $4 / $5",
       "menu_images": [],
       "stall_id": "wakwak_1143",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1144/",
@@ -72538,7 +72725,10 @@
       "menu_text": "Fried Prawn Noodle $4/$5",
       "menu_images": [],
       "stall_id": "wakwak_1150",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1159/",
@@ -73079,7 +73269,10 @@
       "menu_text": "Fried Carrot Cake $3/$4/$5\n\nFried Oyster $5/$8/$10\n\nOyster Omelette $8/$10\n\nFried Kway Teow $3.5/$4.5/$5.5\n\nFried Dong Fen $4/$5/$6",
       "menu_images": [],
       "stall_id": "wakwak_1164",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1165/",
@@ -75014,7 +75207,10 @@
       "menu_text": "Plain Prata $2.0/2pcs\n\nMushroom Prata $2.0\n\n\n\nNasi Goreng Ikan Biils $4.0\n\nNoodle Goreng $4.0\n\nBee Hoon Ikan Bilis Goreng $4.0\n\nCombo Meal $8.0\n\nRoti John $4.0\n\nMee Kuah $4.0\n\nMutton Soup $4.0\n\nSoup Kaki $5.0\n\nNasi Biriyani $5.0\n\nNasi Goreng Ayam %6.0\n\nTulang Merah $10.0",
       "menu_images": [],
       "stall_id": "wakwak_1177",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1178/",
@@ -76262,7 +76458,10 @@
       "menu_text": "Economic Rice $2.0\n\nWanton Noodle $3.0\n\nFish Ball Noodle $3.0\n\nDry Noodle $3.0\n\nEconomic Bee Hoon $2.5\n\nBronw Rice $3.0",
       "menu_images": [],
       "stall_id": "wakwak_1186",
-      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre"
+      "hawker_centre_id": "redhill_lane_blk_85_redhill_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1256/",
@@ -76938,7 +77137,10 @@
       "menu_text": "Set meal 1 veg 1 soup 1 rice $5.50",
       "menu_images": [],
       "stall_id": "wakwak_1265",
-      "hawker_centre_id": "upper_cross_street_blk_531a_hong_lim_food_centre_and_market"
+      "hawker_centre_id": "upper_cross_street_blk_531a_hong_lim_food_centre_and_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1266/",
@@ -79738,7 +79940,10 @@
       "menu_text": "Fresh Clam Laksa $3.50\n\nChee Cheong Fun $1.80\n\nLor Mee $3.50\n\nYong Tau Foo $3.60\n\nAdd on $0.60",
       "menu_images": [],
       "stall_id": "wakwak_359",
-      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre"
+      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/362/",
@@ -81634,7 +81839,10 @@
       "menu_text": "fried rice $3.50\n\nolive fried rice $3.50\n\npineapple friend rice $3.50\n\nfish head bee hoon $3.00\n\neconomic bee hoon $3.00",
       "menu_images": [],
       "stall_id": "wakwak_612",
-      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre"
+      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/614/",
@@ -82104,7 +82312,10 @@
       "menu_text": "vegetable $0.70\n\nmeat $1.00\n\nfish $1.50\n\ncurry chicken $1.50\n\nrice $0.50",
       "menu_images": [],
       "stall_id": "wakwak_621",
-      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre"
+      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/624/",
@@ -82494,7 +82705,10 @@
       "menu_text": "Mee Goreng $4.00\n\nMee Kuah $4.00\n\nBee Hoon Goreng $4.00\n\nCurry Mutton $6.00\n\nCurry Chicken $5.00",
       "menu_images": [],
       "stall_id": "wakwak_629",
-      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre"
+      "hawker_centre_id": "bukit_merah_lane_1_blk_120_alexandra_village_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/630/",
@@ -83789,7 +84003,10 @@
       "menu_text": "Laksa Yong Tau Fu $4/5,\n\nYong Tau Fu Soup $3/4,\n\nYong Tau Fu Bee Hoon (Soup) $3/4,\n\nYong Tau Fu Bee Hoon (Dry) $4,\n\nPrawn Roll $6",
       "menu_images": [],
       "stall_id": "wakwak_470",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/472/",
@@ -84911,7 +85128,10 @@
       "menu_text": "Fried Kway Teow (Black/White) $5/8/10",
       "menu_images": [],
       "stall_id": "wakwak_565",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1241/",
@@ -84942,7 +85162,10 @@
       "menu_text": "Fried kway teow (black/white) $5.00 to $10.00",
       "menu_images": [],
       "stall_id": "wakwak_1241",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1270/",
@@ -85922,7 +86145,10 @@
       "menu_text": "Hakka yong tau fu with noodles $4 to $5\n\nCurry yong tau fu with noodles $4.50 to $5.50\n\nCurry chicken $4 to $5",
       "menu_images": [],
       "stall_id": "wakwak_1210",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1209/",
@@ -85972,7 +86198,10 @@
       "menu_text": "Fried kway teow add prawn $4 to $5\n\nFried kway teow with egg $3",
       "menu_images": [],
       "stall_id": "wakwak_1209",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1208/",
@@ -87198,7 +87427,10 @@
       "menu_text": "Fried hor fun with beef $5.00\n\nFried hor fun with sliced fish $5.00\n\nFried Mui Fan with prawn and beef $6.00",
       "menu_images": [],
       "stall_id": "wakwak_1191",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1193/",
@@ -87946,7 +88178,10 @@
       "menu_text": "3 Dishes+Brown Rice $4,\n\n3 Dishes+Rice $3.50,\n\n3 Dishes+Noodle/ Bee Hoon $4,\n\nOlive/ Char Siew Fried Rice $2.50,\n\nAdd-on Dish $1/portion",
       "menu_images": [],
       "stall_id": "wakwak_735",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1235/",
@@ -88024,7 +88259,10 @@
       "menu_text": "3 dishes with brown rice $4.00\n\nOlive/ char siew fried rice $2.50\n\n3 dishes with rice $3.00\n\n3 dishes with noodle/ bee hoon $4.00",
       "menu_images": [],
       "stall_id": "wakwak_1235",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1234/",
@@ -89060,7 +89298,10 @@
       "menu_text": "Mee rebus $3.00\n\nMee soto $3.00\n\nNasi lemak set $3.00\n\nNasi sambal goreng set $4.50",
       "menu_images": [],
       "stall_id": "wakwak_1216",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1215/",
@@ -89498,7 +89739,10 @@
       "menu_text": "Fried oyster/ oyster omelette $4.00 to $10.00\n\nFried prawn/ prawn omelette $4.00 to $10.00\n\nBBQ chicken wing 1pc $1.30\n\nBBQ spring chicken $9.00\n\nSeafood omelette $8.00 to $10.00",
       "menu_images": [],
       "stall_id": "wakwak_1276",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1224/",
@@ -91678,7 +91922,10 @@
       "menu_text": "Fried Hokkien Prawn Mee $4/6",
       "menu_images": [],
       "stall_id": "wakwak_552",
-      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall"
+      "hawker_centre_id": "old_airport_road_blk_51_51_old_airport_road_food_centre_and_shopping_mall",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/654/",
@@ -91960,7 +92207,10 @@
       "menu_text": "Mee Soto $3.00\n\nMee Rebus $3.00\n\nMee Siam $2.50\n\nNasi Lemak $3.00\n\nNasi Sambal Goreng $5.00",
       "menu_images": [],
       "stall_id": "wakwak_656",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "halal"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/657/",
@@ -93655,7 +93905,10 @@
       "menu_text": "Mee Siam $3\n\nLor Mee $3\n\nMee Rebus $3\n\nLaksa $3\n\nKwayChap $3.50",
       "menu_images": [],
       "stall_id": "wakwak_724",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/725/",
@@ -94873,7 +95126,10 @@
       "menu_text": "Each Piece $0.50\n\nNoodle $0.50\n\nLaksa Gravy $0.50\n\nRice $0.50\n\nMinimum 6 pieces",
       "menu_images": [],
       "stall_id": "wakwak_744",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/757/",
@@ -97201,7 +97457,10 @@
       "menu_text": "egg fried rice with shrimp $4.00\n\negg fried rice with tau gua $4.00\n\negg fried rice with witch chicken $4.00\n\nyang chow fried rice $4.00\n\negg fried rice with pork $4.00",
       "menu_images": [],
       "stall_id": "wakwak_683",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/685/",
@@ -97448,7 +97707,10 @@
       "menu_text": "Oyster Egg $6\n\nblack and white carrot cake $5\n\nfried oyster $5\n\nfried kway teow $4\n\ncarrot cake $3",
       "menu_images": [],
       "stall_id": "wakwak_690",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/692/",
@@ -98310,7 +98572,10 @@
       "menu_text": "",
       "menu_images": [],
       "stall_id": "wakwak_707",
-      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre"
+      "hawker_centre_id": "jalan_bukit_merah_blk_6_abc_brickworks_market_food_centre",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/708/",
@@ -98896,7 +99161,10 @@
       "menu_text": "Fried Hokkien Prawn Mee (Small) $4\n\nFried Hokkien Big Prawn Mee (Small) $7\n\nFried Hokkien Crayfish Mee (Small) $10",
       "menu_images": [],
       "stall_id": "wakwak_915",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/922/",
@@ -100703,7 +100971,10 @@
       "menu_text": "Fried Hokkien Prawn Mee (Small) $4\n\nFried Hokkien Prawn Mee (Medium) $6\n\nFried Hokkien Prawn Mee (Large) $8",
       "menu_images": [],
       "stall_id": "wakwak_941",
-      "hawker_centre_id": null
+      "hawker_centre_id": null,
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/979/",
@@ -104489,7 +104760,10 @@
       "menu_text": "Nasi Lemak w/ Chicken Wing + Egg + Veg $3.00\n\nNasi Lemak w/ Chicken Drumstick + Egg + Veg $3.00\n\nNasi Lemak w/ Fish + Egg + Veg $3.50\n\nNasi Lemak w/ 2 Kuning (Dried Fish) + Sausage + Egg $2.50\n\nBee Hoon/Noodle + Veg + Chicken Wing $2.50",
       "menu_images": [],
       "stall_id": "wakwak_280",
-      "hawker_centre_id": "yishun_ring_road_blk_104_105_chong_pang_market_and_food_centre"
+      "hawker_centre_id": "yishun_ring_road_blk_104_105_chong_pang_market_and_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/281/",
@@ -104975,7 +105249,10 @@
       "menu_text": "Yong Tau Foo $4.90\n\nFried Chicken Wings $5.00 for three\n\nYong Tau Foo + Chicken Wing $6.30",
       "menu_images": [],
       "stall_id": "wakwak_249",
-      "hawker_centre_id": "yishun_ring_road_blk_104_105_chong_pang_market_and_food_centre"
+      "hawker_centre_id": "yishun_ring_road_blk_104_105_chong_pang_market_and_food_centre",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/282/",
@@ -107815,7 +108092,10 @@
       "menu_text": "Fried Carrot Cake with prawn/squid $5\n\nFried carrot cake extra egg $4\n\ncarrot cake $3/4",
       "menu_images": [],
       "stall_id": "wakwak_1079",
-      "hawker_centre_id": "new_upper_changi_road_blk_208b"
+      "hawker_centre_id": "new_upper_changi_road_blk_208b",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1077/",
@@ -108343,7 +108623,10 @@
       "menu_text": "3 dishes with rice $2.50\n\nBee Hoon with 3pcs $2.80\n\nBee Hoon with 2 pcs $2.50\n\nBee Hoon with 1pc $2",
       "menu_images": [],
       "stall_id": "wakwak_1056",
-      "hawker_centre_id": "new_upper_changi_road_blk_208b"
+      "hawker_centre_id": "new_upper_changi_road_blk_208b",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1055/",
@@ -108833,7 +109116,10 @@
       "menu_text": "Yong Tau Foo (6 pieces with noodles) $3\n\nSet A $2.50\n\nSet B $2.50\n\nSet C $4.50\n\nSet D $3.50\n\nRojak $2.50/3/5",
       "menu_images": [],
       "stall_id": "wakwak_1050",
-      "hawker_centre_id": "new_upper_changi_road_blk_208b"
+      "hawker_centre_id": "new_upper_changi_road_blk_208b",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1051/",
@@ -108882,7 +109168,10 @@
       "menu_text": "Hokkien Mee $3.50/4/5/6\n\nAdditional Ingredients $2",
       "menu_images": [],
       "stall_id": "wakwak_1051",
-      "hawker_centre_id": "new_upper_changi_road_blk_208b"
+      "hawker_centre_id": "new_upper_changi_road_blk_208b",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1054/",
@@ -110627,7 +110916,10 @@
       "menu_text": "Claypot Pork Rib/ beef noodle $4.00, Claypot noodle $5.00, Sambal Fish with Rice $4.00",
       "menu_images": [],
       "stall_id": "wakwak_1447",
-      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market"
+      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1438/",
@@ -110763,7 +111055,10 @@
       "menu_text": "Yong Tau Foo Dry/Soup, Yong Tau Foo Ingredients",
       "menu_images": [],
       "stall_id": "wakwak_1450",
-      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market"
+      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market",
+      "dietary_tags": [
+        "healthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1436/",
@@ -110953,7 +111248,10 @@
       "menu_text": "Nasi Lemak set: $2.40, Bee Hoon $1, Fried Mee $1",
       "menu_images": [],
       "stall_id": "wakwak_1435",
-      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market"
+      "hawker_centre_id": "mei_chin_road_blk_159_mei_chin_road_market",
+      "dietary_tags": [
+        "unhealthy"
+      ]
     },
     {
       "url": "https://wak-wak-hawker.com/en/stall/1444/",
