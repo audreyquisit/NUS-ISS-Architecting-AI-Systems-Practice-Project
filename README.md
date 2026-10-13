@@ -79,3 +79,4 @@ The project aims to:
 - Prevent hallucinated recommendations through verification.
 - Apply responsible AI and secure system design.
 - Showcase modern DevOps, MLOps, and LLMOps practices.
+- 
