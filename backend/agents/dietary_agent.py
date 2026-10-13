@@ -2,7 +2,7 @@ import json
 import os
 from typing import Optional
 
-from services.hawker_service import find_dietary_stalls, INFERRED_DIETS, VERIFIABLE_DIETS
+from services.hawker_service import INFERRED_DIETS, find_dietary_stalls
 
 
 DIETARY_KEYWORDS = (
@@ -202,7 +202,9 @@ def run(
     )
 
     limitations = []
+    confidence = 0.3
     scored_stalls = list(stalls)
+    inferred_diets = [diet for diet in final_dietary if diet in INFERRED_DIETS]
 
     if final_dietary:
         try:
@@ -228,6 +230,12 @@ def run(
             "The menu source has no ingredient, allergen, or certified dietary fields; "
             "dietary suitability cannot be verified."
         )
+        suitable = [item for item in scored_stalls if item.get("dietary_suitable") is True]
+        confidence = 0.9 if suitable else 0.6
+    elif final_cuisine:
+        confidence = 0.9 if scored_stalls else 0.5
+    else:
+        confidence = 0.6 if scored_stalls else 0.3
     if inferred_diets:
         limitations.append(
             "Dietary suitability is inferred from stall name and category heuristics "
