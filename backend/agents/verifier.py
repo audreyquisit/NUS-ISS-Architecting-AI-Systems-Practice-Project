@@ -164,6 +164,7 @@ def _verify_worker_result(
             # may add only their own matching explanation fields.
             worker_fields = (
                 "matched_dietary_tags", "matched_cuisine", "preference_score",
+                "dietary_suitable", "dietary_confidence",
                 "reason", "budget_limit_sgd", "budget_match",
             )
             source_candidates.append({
@@ -172,7 +173,10 @@ def _verify_worker_result(
             })
         candidates = source_candidates
     if agent == "dietary":
-        diets = [d.casefold() for d in request.get("dietary_preferences", [])]
+        diets = request.get("dietary_preferences", [])
+        single_diet = request.get("dietary_preference")
+        if single_diet:
+            diets = list(diets) + [single_diet]
         cuisines = [value.casefold() for value in request.get("cuisine_preferences", [])]
         # Verifiable restrictions (vegetarian, vegan, gluten-free, etc.) require
         # structured data the source lacks, so they short-circuit to empty.
