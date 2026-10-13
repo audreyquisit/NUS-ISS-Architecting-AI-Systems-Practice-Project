@@ -122,11 +122,11 @@ jobs:
       - name: Push Frontend Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
-  
+
   deploy:
     needs: docker
     runs-on: ubuntu-latest
-  
+
     steps:
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.2.0
@@ -136,29 +136,30 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-  
+
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
-  
+
             docker stop hawker-backend || true
             docker rm hawker-backend || true
             docker stop hawker-frontend || true
             docker rm hawker-frontend || true
-  
+
             docker run -d \
               --name hawker-backend \
               --restart unless-stopped \
-              -p 80:5000 \
+              -p 80:8000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
 
             docker run -d \
               --name hawker-frontend \
               --restart unless-stopped \
-              -p 81:3000 \
+              -p 81:5000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
-  
+
   #remember to install docker on the ubuntu vm before running deploy
+
 # sudo apt update
 # sudo apt install docker.io -y
 # sudo systemctl enable docker

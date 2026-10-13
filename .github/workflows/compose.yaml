@@ -23,7 +23,7 @@ jobs:
               run: |
                   docker run -d \
                     --name hawker-frontend \
-                    -p 80:3000 \
+                    -p 81:5000 \
                     --restart unless-stopped \
                     ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
