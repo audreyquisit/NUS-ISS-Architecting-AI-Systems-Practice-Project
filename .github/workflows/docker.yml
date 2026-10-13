@@ -137,16 +137,26 @@ jobs:
           script: |
             set -e
   
-            docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
+
   
-            docker stop hawker-app || true
-            docker rm hawker-app || true
+            docker stop hawker-backend || true
+            docker rm hawker-backend || true
+            docker stop hawker-frontend || true
+            docker rm hawker-frontend || true
   
             docker run -d \
-              --name hawker-app \
+              --name hawker-backend \
               --restart unless-stopped \
               -p 80:5000 \
-              ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+              ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
+
+            docker run -d \
+              --name hawker-frontend \
+              --restart unless-stopped \
+              -p 80:3000 \
+              ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
   
   #remember to install docker on the ubuntu vm before running deploy
 # sudo apt update
