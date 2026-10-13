@@ -136,9 +136,23 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
+            if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+              echo "OPENAI_API_KEY secret is not set."
+              exit 1
+            fi
+            if [ -z "${{ secrets.ONEMAP_EMAIL }}" ]; then
+              echo "ONEMAP_EMAIL secret is not set."
+              exit 1
+            fi
+            if [ -z "${{ secrets.ONEMAP_EMAIL_PASSWORD }}" ]; then
+              echo "ONEMAP_EMAIL_PASSWORD secret is not set."
+              exit 1
+            fi
   
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
+
+            docker network create hawker-net || true
 
   
             docker stop hawker-backend || true
@@ -148,14 +162,20 @@ jobs:
   
             docker run -d \
               --name hawker-backend \
+              --network hawker-net \
+              -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              -e ONEMAP_EMAIL="${{ secrets.ONEMAP_EMAIL }}" \
+              -e ONEMAP_EMAIL_PASSWORD="${{ secrets.ONEMAP_EMAIL_PASSWORD }}" \
               --restart unless-stopped \
-              -p 80:5000 \
+              -p 80:8000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
 
             docker run -d \
               --name hawker-frontend \
+              --network hawker-net \
+              -e BACKEND_URL=http://hawker-backend:8000 \
               --restart unless-stopped \
-              -p 81:3000 \
+              -p 81:5000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
   
   #remember to install docker on the ubuntu vm before running deploy
