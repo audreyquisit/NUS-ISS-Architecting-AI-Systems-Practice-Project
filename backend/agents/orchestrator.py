@@ -68,6 +68,43 @@ def parse_request(state: SharedState) -> SharedState:
 
     request_id = state.get("request_id")
     log_activity(request_id, "planner.started", model="gpt-4o")
+    current_message = state.get("user_request", "")
+    context = _bounded_planner_context(state.get("conversation_context", {}))
+    if not _current_turn_supports_food_action(current_message, context):
+        # History may resolve a food follow-up, but it cannot create a food
+        # request by itself. Skip the planner and workers when the current turn
+        # has no food intent or valid response to a pending food prompt.
+        request = ParsedRequest(intent="other")
+        log_activity(
+            request_id,
+            "planner.context_not_relevant",
+            action="skip_planner_and_workers",
+            model_call_made=False,
+        )
+        log_activity(
+            request_id,
+            "planner.completed",
+            intent="other",
+            origin_status="not_applicable",
+            budget_sgd=None,
+            requested_dishes=[],
+            clarification_required=False,
+            proposed_workers=[],
+            decision_summary={
+                "origin_source": None,
+                "search_scope_mode": None,
+                "requested_area": None,
+                "travel_mode": None,
+                "budget_sgd": None,
+                "menu_preferences": [],
+                "cuisine_preferences": [],
+                "dietary_preferences": [],
+                "max_travel_time_min": None,
+                "max_queue_min": None,
+            },
+        )
+        return {"parsed_request": request.model_dump(), "tasks": []}
+
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You parse SmartHawker requests and create a compact worker plan.
 Use only information in the current message and recent context. The current message
@@ -114,7 +151,6 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     parser = prompt | state["model"].with_structured_output(
         OrchestrationPlan, method="function_calling"
     )
-    context = _bounded_planner_context(state.get("conversation_context", {}))
     plan: OrchestrationPlan = parser.invoke({
         "message": state.get("user_request", ""),
         "context": json.dumps(context, ensure_ascii=False),
@@ -133,7 +169,6 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
         for key, value in request.field_sources.items()
     }
     session_state = (context or {}).get("state", {})
-    current_message = state.get("user_request", "")
     manual_answer = re.search(
         r"\bmanual location answer\s*:\s*(.+?)\s*$", current_message, re.I
     )
@@ -291,6 +326,79 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
         "parsed_request": request.model_dump(),
         "tasks": tasks,
     }
+
+
+def _current_turn_supports_food_action(message: str, context: dict) -> bool:
+    """Require current-turn food intent or a direct answer to a pending food prompt."""
+    if not isinstance(message, str) or not message.strip():
+        return False
+
+    # Look for a food-related action or preference in the current turn. This
+    # is deliberately independent of injection phrasing: unrelated content
+    # cannot gain authority by resembling a known attack string.
+    if re.search(
+        r"\b(?:food|hawker|meal|eat|dish|stall|menu|recommend(?:ation)?s?|"
+        r"chicken\s+rice|wanton\s+mee|noodles?|prata|laksa|rice|soup|"
+        r"restaurant|eatery|cafe|vegetarian|vegan|halal|gluten[- ]free|"
+        r"allergen|queue|crowd|weather|rain|outdoor|"
+        r"wait\s*time|budget|price|cheap|cheaper|affordable|under\s+\$?|"
+        r"below\s+\$?)\b|\$\s*\d|\bnear\s+(?:me|here|my\s+"
+        r"(?:current\s+)?location)\b",
+        message,
+        re.I,
+    ):
+        return True
+
+    turns = context.get("turns", []) if isinstance(context, dict) else []
+    last_assistant = next((
+        str(turn.get("content", ""))
+        for turn in reversed(turns)
+        if isinstance(turn, dict) and turn.get("role") == "assistant"
+    ), "")
+    prior_food_context = any(
+        isinstance(turn, dict)
+        and turn.get("role") == "user"
+        and re.search(
+            r"\b(?:food|hawker|meal|eat|dish|stall|menu|noodles?|rice|"
+            r"prata|laksa|chicken|wanton|cheap|budget)\b",
+            str(turn.get("content", "")),
+            re.I,
+        )
+        for turn in turns
+    )
+    if not prior_food_context or not last_assistant:
+        return False
+
+    # Short confirmations can continue only a concrete offer from the latest
+    # assistant turn. A generic invitation to use the app is not a pending
+    # action that can revive an earlier search.
+    answer = message.strip().casefold()
+    affirmative = bool(re.fullmatch(
+        r"(?:yes|yeah|yep|sure|okay|ok|please|go ahead|show me|do that)[.! ]*",
+        answer,
+    ))
+    explicit_offer = bool(re.search(
+        r"\bwould you like (?:me to )?(?:show|find|search|look|check|explore)\b"
+        r"|\b(?:show options|search farther|look farther|check a centre|"
+        r"explore other food options)\b",
+        last_assistant,
+        re.I,
+    ))
+    if affirmative and explicit_offer:
+        return True
+
+    pending_location = bool(re.search(
+        r"\b(?:starting point|starting location|where are you starting|"
+        r"name a nearby place|enter a nearby place)\b",
+        last_assistant,
+        re.I,
+    ))
+    short_place_answer = (
+        len(answer) <= 80
+        and len(answer.split()) <= 10
+        and not re.search(r"[.!?].+\S", answer)
+    )
+    return pending_location and short_place_answer
 
 
 def _bounded_planner_context(value: Any) -> dict[str, Any]:
