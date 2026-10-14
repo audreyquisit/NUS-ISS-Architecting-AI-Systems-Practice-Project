@@ -148,6 +148,10 @@ jobs:
               echo "ONEMAP_EMAIL_PASSWORD secret is not set."
               exit 1
             fi
+            if [ -z "${{ secrets.AWS_REGION }}" ]; then
+              echo "AWS_REGION secret is not set."
+              exit 1
+            fi
   
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
@@ -166,6 +170,11 @@ jobs:
               -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
               -e ONEMAP_EMAIL="${{ secrets.ONEMAP_EMAIL }}" \
               -e ONEMAP_EMAIL_PASSWORD="${{ secrets.ONEMAP_EMAIL_PASSWORD }}" \
+              --log-driver=awslogs \
+              --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
+              --log-opt awslogs-group=/smart-hawker/backend \
+              --log-opt awslogs-stream=hawker-backend \
+              --log-opt awslogs-create-group=true \
               --restart unless-stopped \
               -p 80:8000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
@@ -174,6 +183,11 @@ jobs:
               --name hawker-frontend \
               --network hawker-net \
               -e BACKEND_URL=http://hawker-backend:8000 \
+              --log-driver=awslogs \
+              --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
+              --log-opt awslogs-group=/smart-hawker/frontend \
+              --log-opt awslogs-stream=hawker-frontend \
+              --log-opt awslogs-create-group=true \
               --restart unless-stopped \
               -p 81:5000 \
               ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
