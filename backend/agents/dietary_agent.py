@@ -50,8 +50,6 @@ def run(
     candidate_centres: Optional[list[str]] = None,
     candidate_centre_ids: Optional[list[str]] = None,
 ):
-    print("Dietary Agent")
-
     source_text = " ".join([task or "", user_request or ""]).strip()
 
     inferred_dietary = _extract_keywords(source_text, DIETARY_KEYWORDS)

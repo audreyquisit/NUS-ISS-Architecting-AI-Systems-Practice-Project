@@ -10,23 +10,61 @@ from services.hawker_service import (
 
 def _verified_location(result: dict[str, Any]) -> dict[str, Any]:
     payload = result.get("payload", result)
-    valid_ids = {item["id"] for item in load_hawker_centres()}
-    all_logistics = [
-        item for item in payload.get("logistics", [])
-        if isinstance(item, dict) and item.get("centre_id") in valid_ids
-    ]
+    centres = {item["id"]: item for item in load_hawker_centres()}
+    valid_ids = set(centres)
+    all_logistics = []
+    for item in payload.get("logistics", []):
+        if not isinstance(item, dict) or item.get("centre_id") not in valid_ids:
+            continue
+        source = centres[item["centre_id"]]
+        coords = item.get("coordinates") or {}
+        travel = item.get("travel") or {}
+        if not isinstance(travel, dict) or not isinstance(coords, dict):
+            continue
+        try:
+            coordinates_match = (
+                abs(float(coords["lat"]) - float(source["latitude"])) < 0.00001
+                and abs(float(coords["lng"]) - float(source["longitude"])) < 0.00001
+            )
+        except (KeyError, TypeError, ValueError):
+            coordinates_match = False
+        if (
+            item.get("centre_name") != source["name"]
+            or item.get("address") != source["address"]
+            or not coordinates_match
+            or travel.get("source") not in {"onemap", "unavailable"}
+            or travel.get("mode") not in {"pt", "walk", "drive", "cycle"}
+        ):
+            continue
+        all_logistics.append(item)
     route_by_id = {item["centre_id"]: item for item in all_logistics}
-    selected = [
-        item for item in payload.get("selected_centres", [])
-        if isinstance(item, dict)
-        if item.get("centre_id") in valid_ids
-    ]
+    selected = []
+    seen_ids = set()
+    for item in payload.get("selected_centres", []):
+        if not isinstance(item, dict) or item.get("centre_id") not in valid_ids:
+            continue
+        centre_id = item["centre_id"]
+        if centre_id in seen_ids:
+            continue
+        seen_ids.add(centre_id)
+        # Keep catalogue-owned centre identity and only a bounded rank. Drop
+        # free-form model rationales so they cannot become response evidence.
+        selected.append({
+            "centre_id": centre_id,
+            "rank": len(selected) + 1,
+            "logistics_fit": 1.0,
+            "rationale": (
+                "Selected from verified catalogue and route evidence."
+                if centre_id in route_by_id
+                and (route_by_id[centre_id].get("travel") or {}).get("source") == "onemap"
+                and (route_by_id[centre_id].get("travel") or {}).get("total_duration_min") is not None
+                else "Selected from the verified centre catalogue; route evidence is unavailable."
+            ),
+        })
     selected_ids = {item["centre_id"] for item in selected}
     logistics = [
-        item for item in payload.get("logistics", [])
-        if isinstance(item, dict)
-        if item.get("centre_id") in valid_ids
-        and item.get("centre_id") in selected_ids
+        item for item in all_logistics
+        if item["centre_id"] in selected_ids
     ]
     checked = {**payload, "selected_centres": selected, "logistics": logistics}
     expansion = payload.get("search_expansion")
@@ -166,9 +204,45 @@ def _verify_worker_result(
                 "matched_dietary_tags", "matched_cuisine", "preference_score",
                 "reason", "budget_limit_sgd", "budget_match",
             )
+            worker_values = {
+                key: candidate[key] for key in worker_fields if key in candidate
+            }
+            tags = set(source.get("dietary_tags", []))
+            if "matched_dietary_tags" in worker_values:
+                requested_tags = worker_values["matched_dietary_tags"]
+                if not isinstance(requested_tags, list):
+                    requested_tags = []
+                worker_values["matched_dietary_tags"] = [
+                    tag for tag in requested_tags
+                    if isinstance(tag, str) and tag in tags
+                ]
+            if "matched_cuisine" in worker_values:
+                categories = source.get("categories", [])
+                requested_cuisine = request.get("cuisine_preferences", [])
+                worker_values["matched_cuisine"] = [
+                    preference for preference in requested_cuisine
+                    if isinstance(preference, str) and any(
+                        preference.casefold() == str(category).casefold()
+                        or preference.casefold() in str(category).casefold().split()
+                        for category in categories
+                    )
+                ]
+            worker_values["reason"] = "Matched verified catalogue fields and request constraints."
+            if agent == "budget":
+                amount = request.get("budget_amount")
+                minimum = source.get("price_sgd_min")
+                maximum = source.get("price_sgd_max")
+                worker_values["budget_limit_sgd"] = amount
+                worker_values["budget_match"] = (
+                    "priced_within_budget"
+                    if amount is not None and maximum is not None and maximum <= amount
+                    else "starting_price_within_budget"
+                    if amount is not None and minimum is not None and minimum <= amount
+                    else "not_within_budget"
+                )
             source_candidates.append({
                 **source,
-                **{key: candidate[key] for key in worker_fields if key in candidate},
+                **worker_values,
             })
         candidates = source_candidates
     if agent == "dietary":

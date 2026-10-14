@@ -1,7 +1,10 @@
 import os
+import hmac
+import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from time import monotonic
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -10,26 +13,41 @@ from pydantic import ValidationError
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-from agents.orchestrator import build_workflow
+from agents.orchestrator import build_workflow, _canonical_worker_task
 from schemas import UserPreferences
 from agents.location_agent import LocationResolutionError, run as run_location_agent
 from models.location_models import LocationQuery
 from services.location_service import LocationServiceError
 from services.hawker_service import list_menu_stalls, search_menu_items
 from services.trace_store import save_trace
+from services.activity_log import log_activity
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
+MAX_MESSAGE_CHARS = 4000
+
+
+def _trace_access_allowed() -> bool:
+    expected = os.getenv("TRACE_ACCESS_TOKEN", "")
+    supplied = request.headers.get("Authorization", "")
+    if supplied.startswith("Bearer "):
+        supplied = supplied[7:]
+    return bool(len(expected) >= 32 and supplied and hmac.compare_digest(supplied, expected))
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    sgt = timezone(timedelta(hours=8), name="SGT")
+    return datetime.now(sgt).isoformat(timespec="microseconds")
 
 
-def run_orchestrator(message: str, payload: Optional[dict] = None):
+def run_orchestrator(
+    message: str, payload: Optional[dict] = None, request_id: Optional[str] = None,
+):
     payload = payload or {}
     workflow = build_workflow()
     result = workflow.invoke({
         "user_request": message,
+        "request_id": request_id,
         "tasks": [],
         "agent_results": [],
         "final_recommendation": "",
@@ -52,12 +70,12 @@ def run_orchestrator(message: str, payload: Optional[dict] = None):
         raw_location if result.get("needs_location")
         else (location_envelope or {}).get("payload", raw_location)
     )
-    worker_plan = [
-        task.model_dump() if hasattr(task, "model_dump") else task
-        for task in result.get("tasks", [])
-    ]
     verified_results = result.get("verified_results", [])
     parsed_request = result.get("parsed_request", {})
+    worker_plan = [
+        {"agent": task.agent, "task": _canonical_worker_task(task.agent, parsed_request)}
+        for task in result.get("tasks", [])
+    ]
     return {
         "reply": result.get("final_recommendation", ""),
         "structured": {
@@ -74,17 +92,69 @@ def run_orchestrator(message: str, payload: Optional[dict] = None):
     }
 
 
-def _execute_and_trace(message: str, payload: dict) -> dict:
+def _execute_and_trace(
+    message: str, payload: dict, endpoint: str = "chat",
+) -> dict:
+    from services.activity_log import begin_activity_capture, end_activity_capture, log_activity
+
     request_id = str(uuid.uuid4())
-    response = run_orchestrator(message, payload)
-    save_trace({
-        "request_id": request_id,
-        "timestamp": _now_iso(),
-        "user_request": message,
-        "payload": payload,
-        "response": response,
-    })
-    return {"request_id": request_id, **response}
+    timestamp_start = _now_iso()
+    started = monotonic()
+    capture_token, events = begin_activity_capture()
+    log_activity(request_id, "request.received", endpoint=endpoint, message_chars=len(message))
+    try:
+        try:
+            response = run_orchestrator(message, payload, request_id=request_id)
+        except Exception as exc:
+            log_activity(request_id, "request.failed", error_type=type(exc).__name__)
+            timestamp_end = _now_iso()
+            try:
+                save_trace({
+                    "request_id": request_id,
+                    "timestamp_start": timestamp_start,
+                    "timestamp_end": timestamp_end,
+                    "timestamp": timestamp_end,
+                    "status": "error",
+                    "duration_ms": round((monotonic() - started) * 1000),
+                    "metadata": {
+                        "model": "gpt-4o",
+                        "environment": os.getenv("APP_ENV", "development"),
+                        "endpoint": endpoint,
+                        "workflow_type": "smarthawker_orchestrator",
+                    },
+                    "user_query": message,
+                    "events": events,
+                })
+            except Exception:
+                log_activity(request_id, "trace.save_failed")
+            raise
+        log_activity(
+            request_id,
+            "request.completed",
+            outcome="location_required" if response.get("needs_location") else "success",
+            reply_chars=len(response.get("reply") or ""),
+        )
+        timestamp_end = _now_iso()
+        save_trace({
+            "request_id": request_id,
+            "timestamp_start": timestamp_start,
+            "timestamp_end": timestamp_end,
+            "timestamp": timestamp_end,
+            "status": "location_required" if response.get("needs_location") else "success",
+            "duration_ms": round((monotonic() - started) * 1000),
+            "metadata": {
+                "model": "gpt-4o",
+                "environment": os.getenv("APP_ENV", "development"),
+                "endpoint": endpoint,
+                "workflow_type": "smarthawker_orchestrator",
+            },
+            "user_query": message,
+            "events": events,
+            "response": response,
+        })
+        return {"request_id": request_id, **response}
+    finally:
+        end_activity_capture(capture_token)
 
 
 def build_preferences_message(payload: dict) -> str:
@@ -111,15 +181,30 @@ def health():
 @app.route("/api/chat", methods=["POST"])
 def chat():
     payload = request.get_json(silent=True) or {}
-    message = (payload.get("message") or "").strip()
+    raw_message = payload.get("message")
+    if raw_message is not None and not isinstance(raw_message, str):
+        return jsonify({"error": "Message must be text."}), 400
+    message = (raw_message or "").strip()
 
     if not message:
         return jsonify({"error": "Message is required."}), 400
+    if len(message) > MAX_MESSAGE_CHARS:
+        return jsonify({"error": f"Message must be {MAX_MESSAGE_CHARS} characters or fewer."}), 413
 
-    wrapped = _execute_and_trace(message, payload)
+    wrapped = _execute_and_trace(message, payload, endpoint="chat")
     if wrapped.get("needs_location"):
         location_error = (wrapped.get("location_data") or {}).get("error")
-        return jsonify({"error": location_error or "I need a starting location."}), 422
+        return jsonify({
+            "code": (
+                "location_required"
+                if (wrapped.get("location_data") or {}).get("location_required")
+                else "location_resolution_failed"
+            ),
+            "error": location_error or (
+                "I need a starting point to find nearby hawker centres. "
+                "Allow location access or name a nearby place."
+            ),
+        }), 422
     return jsonify({
         "request_id": wrapped["request_id"],
         "reply": wrapped["reply"],
@@ -135,9 +220,14 @@ def chat():
 def recommend():
     payload = request.get_json(silent=True) or {}
 
-    message = (payload.get("message") or "").strip()
+    raw_message = payload.get("message")
+    if raw_message is not None and not isinstance(raw_message, str):
+        return jsonify({"error": "Message must be text."}), 400
+    message = (raw_message or "").strip()
+    if len(message) > MAX_MESSAGE_CHARS:
+        return jsonify({"error": f"Message must be {MAX_MESSAGE_CHARS} characters or fewer."}), 413
     if message:
-        wrapped = _execute_and_trace(message, payload)
+        wrapped = _execute_and_trace(message, payload, endpoint="recommendation")
         return jsonify({
             "request_id": wrapped["request_id"],
             "reply": wrapped["reply"],
@@ -151,7 +241,7 @@ def recommend():
     if any(key in payload for key in ["location", "budget", "available_time_min", "dietary_preferences"]):
         try:
             message = build_preferences_message(payload)
-            wrapped = _execute_and_trace(message, payload)
+            wrapped = _execute_and_trace(message, payload, endpoint="recommendation")
             return jsonify({
                 "request_id": wrapped["request_id"],
                 "reply": wrapped["reply"],
@@ -169,12 +259,19 @@ def recommend():
 
 @app.route("/api/traces", methods=["GET"])
 def api_traces():
+    if not _trace_access_allowed():
+        return jsonify({"error": "Not found."}), 404
     from services.trace_store import list_traces
     return jsonify(list_traces())
 
 
 @app.route("/api/trace/<request_id>", methods=["GET"])
 def api_trace(request_id: str):
+    if not _trace_access_allowed() or not re.fullmatch(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        request_id,
+    ):
+        return jsonify({"error": "Not found."}), 404
     from services.trace_store import load_trace
     trace = load_trace(request_id)
     if not trace:
@@ -251,6 +348,10 @@ def evaluate_location():
     payload = request.get_json(silent=True) or {}
     if "request" not in payload:
         payload["request"] = payload.get("message", payload.get("task", ""))
+    if not isinstance(payload.get("request"), str):
+        return jsonify({"error": "Request must be text."}), 400
+    if len(payload.get("request") or "") > MAX_MESSAGE_CHARS:
+        return jsonify({"error": f"Request must be {MAX_MESSAGE_CHARS} characters or fewer."}), 413
     try:
         query = LocationQuery.model_validate(payload)
     except ValidationError as error:

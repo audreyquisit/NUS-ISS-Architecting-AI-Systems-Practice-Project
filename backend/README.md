@@ -120,3 +120,13 @@ curl 'http://localhost:8000/api/stalls?limit=2'
 - The backend uses Flask for API routing and Pydantic for payload validation.
 - Replace the stubbed logic in `services.py` with real hawker recommendation and agent orchestration.
 - The backend runs on port `8000` by default.
+- Conversation text, transcript turns, catalogue fields, and external results are
+  treated as untrusted data in LLM prompts. Planner-proposed workers are filtered
+  against application rules, and worker task text is reconstructed from validated
+  request fields. Original wording remains available to relevant specialists.
+- Trace endpoints require `TRACE_ACCESS_TOKEN`. The frontend trace viewer is
+  disabled unless `ENABLE_TRACE_VIEWER=true` and only serves loopback clients;
+  configure the same strong random token in the backend and frontend environments.
+  Trace files retain only operational summaries, omit messages and coordinates,
+  and expire after 30 days by default (`TRACE_RETENTION_DAYS` can be set from 1 to
+  365). Do not enable the viewer on an internet-facing deployment.

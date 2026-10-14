@@ -11,8 +11,6 @@ def run(
     candidate_centre_ids: Optional[list[str]] = None,
 ):
 
-    print("Budget Agent")
-
     stalls = find_stalls_within_budget(
         budget=budget,
         excluded_menu_item_ids=excluded_menu_item_ids,

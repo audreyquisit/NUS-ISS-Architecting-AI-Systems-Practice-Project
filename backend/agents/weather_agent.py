@@ -8,7 +8,6 @@ def run(
     parsed_request: Optional[dict] = None,
     candidate_centres: Optional[list[str]] = None,
 ):
-    print("Weather Agent")
 
     requested_area = (parsed_request or {}).get("requested_area")
     centres = candidate_centres or []

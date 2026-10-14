@@ -7,19 +7,23 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class Coordinates(BaseModel):
-    lat: float = Field(ge=-90, le=90)
-    lng: float = Field(ge=-180, le=180)
+    # Deliberately broad Singapore bounds: reject coordinates outside the
+    # application's service area before spending a reverse-geocode request.
+    # OneMap reverse geocoding remains the final location validation.
+    lat: float = Field(ge=1.0, le=1.6, allow_inf_nan=False)
+    lng: float = Field(ge=103.4, le=104.3, allow_inf_nan=False)
 
 
 class LocationQuery(BaseModel):
     """Input from the orchestrator (or the direct location API)."""
 
-    request: str = ""
+    request_id: Optional[str] = None
+    request: str = Field(default="", max_length=4000)
     user_location: Optional[Coordinates] = None
     user_location_source: Optional[Literal[
         "browser_current_location", "provided_coordinates"
     ]] = None
-    location_text: Optional[str] = None
+    location_text: Optional[str] = Field(default=None, max_length=200)
     travel_mode: Optional[Literal["pt", "walk", "drive", "cycle"]] = None
     max_travel_time_min: Optional[int] = Field(default=None, ge=0)
     priorities: List[str] = Field(default_factory=list)

@@ -29,16 +29,31 @@
     {% if trace %}
     <div class="card">
       <h2>Request</h2>
-      <div class="meta">{{ trace.timestamp }} | request_id: {{ trace.request_id }}</div>
-      <pre>{{ trace.user_request }}</pre>
+      <div class="meta">{{ trace.timestamp }} SGT | {{ trace.status }} | {{ trace.duration_ms or '—' }} ms | request_id: {{ trace.request_id }}</div>
+      <pre>{{ trace.metadata | tojson(indent=2) }}</pre>
     </div>
     <div class="card">
-      <h2>Parsed Request</h2>
+      <h2>User Query (PII-redacted)</h2>
+      <pre>{{ trace.input.user_query }}</pre>
+    </div>
+    <div class="card">
+      <h2>High-level Intent and Parsed Request</h2>
+      <p>{{ trace.intent or 'Not available' }}</p>
       <pre>{{ trace.response.parsed_request | tojson(indent=2) }}</pre>
     </div>
     <div class="card">
-      <h2>Response</h2>
-      <pre>{{ trace.response.reply }}</pre>
+      <h2>Workflow Steps and Tool Calls</h2>
+      {% for step in trace.steps %}
+      <details>
+        <summary>
+          <span class="badge">{{ step.event or 'tool call' }}</span>
+          <span class="meta">{{ step.time or '' }}</span>
+        </summary>
+        <pre>{{ step | tojson(indent=2) }}</pre>
+      </details>
+      {% else %}
+      <p>No step events were recorded for this trace.</p>
+      {% endfor %}
     </div>
     <div class="card">
       <h2>Verified Results</h2>
@@ -54,8 +69,8 @@
       {% endfor %}
     </div>
     <div class="card">
-      <h2>Raw Payload</h2>
-      <pre>{{ trace | tojson(indent=2) }}</pre>
+      <h2>Final Response</h2>
+      <pre>{{ trace.output.final_response }}</pre>
     </div>
     {% else %}
     <div class="card">

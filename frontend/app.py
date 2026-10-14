@@ -1,4 +1,6 @@
 import os
+import ipaddress
+import uuid
 import requests
 from flask import Flask, render_template, request, jsonify
 
@@ -14,8 +16,26 @@ def home():
 
 @app.route("/trace/<request_id>")
 def trace_viewer(request_id):
+    if os.getenv("ENABLE_TRACE_VIEWER", "").casefold() != "true":
+        return "Not found", 404
     try:
-        response = requests.get(f"{BACKEND_URL}/api/trace/{request_id}", timeout=30)
+        if not ipaddress.ip_address(request.remote_addr or "").is_loopback:
+            return "Not found", 404
+    except ValueError:
+        return "Not found", 404
+    try:
+        if str(uuid.UUID(request_id)) != request_id.casefold():
+            return "Not found", 404
+    except (ValueError, AttributeError):
+        return "Not found", 404
+    token = os.getenv("TRACE_ACCESS_TOKEN", "")
+    if not token:
+        return "Trace access is not configured", 503
+    try:
+        response = requests.get(
+            f"{BACKEND_URL}/api/trace/{request_id}",
+            headers={"Authorization": f"Bearer {token}"}, timeout=30,
+        )
         if response.status_code != 200:
             return "Trace not found", 404
         return render_template("trace.html", trace=response.json())
