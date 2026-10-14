@@ -139,7 +139,23 @@ def run(
           that there is not enough joined evidence to recommend a stall.
         - Do not invent or silently repair menu items or prices.
         - Do not invent queue times.
-        - Explain why the recommendation was selected.
+        - Any halal or dietary suitability claim must be based on verified evidence from the MUIS halal certification database or the HPB Healthier Dining match. If dietary suitability is inferred from stall name or category heuristics, disclose that it is an inference, not a verified fact.
+        - Explain why the recommendation was selected in detail. How you arrived at the recommendation is more important than the recommendation itself. Include the following in your rationale:
+        - any fairness trade-offs between dietary suitability, price, queue length, walking distance, and weather conditions;
+        - any limitations of the source data, including missing or unverified dietary suitability, price,
+          queue, walking, or weather information; and
+        - any assumptions made about the user's intent, preferences, or constraints.
+        - any decisions you made to prioritize one factor over another, and why.
+        - any decisions you made to exclude certain candidates, and why.
+        - any decisions you made on how to handle missing or incomplete data, and why.
+        - any decisions you made on how to handle conflicting data, and why.
+        - any decisions you made on how to handle ambiguous data, and why.
+        - any decisions you made on how to handle uncertain data, and why.
+        - any decisions you made on how to handle noisy data, and why.
+        - any decisions you made on how to handle biased data, and why.
+        - any decisions you made on how to handle unverified data, and why.
+        - any decisions you made on how to handle untrusted data, and why.
+        - any decisions you made on your own accord without explicit instructions from the user, and why. also, why you made those decisions and how they affect the recommendation.
         - The selection rationale must mention dietary, price/budget, queue,
           proximity/walking, and weather factors when evidence for them exists.
 
