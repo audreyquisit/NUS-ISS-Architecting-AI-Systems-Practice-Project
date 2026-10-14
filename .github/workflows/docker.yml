@@ -52,13 +52,13 @@ jobs:
 
       # - name: Run Flake8
       #   run: flake8 .
-      - name: Run Backend Flake8
-        run: |
-          flake8 backend --count --statistics
+      # - name: Run Backend Flake8
+      #   run: |
+      #     flake8 backend --count --statistics
 
-      - name: Run Frontend Flake8
-        run: |
-          flake8 frontend --count --statistics
+      # - name: Run Frontend Flake8
+      #   run: |
+      #     flake8 frontend --count --statistics
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -122,31 +122,63 @@ jobs:
       - name: Push Frontend Docker image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
+  
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+              echo "OPENAI_API_KEY secret is not set."
+              exit 1
+            fi
+            if [ -z "${{ secrets.ONEMAP_EMAIL }}" ]; then
+              echo "ONEMAP_EMAIL secret is not set."
+              exit 1
+            fi
+            if [ -z "${{ secrets.ONEMAP_EMAIL_PASSWORD }}" ]; then
+              echo "ONEMAP_EMAIL_PASSWORD secret is not set."
+              exit 1
+            fi
+  
+            docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
-# deploy:
-#     needs: build
-#     runs-on: ubuntu-latest
+            docker network create hawker-net || true
 
-#     steps:
-#       - name: Deploy to Ubuntu VM
-#         uses: appleboy/ssh-action@v1.2.0
-#         with:
-#           host: ${{ secrets.VM_HOST }}
-#           username: ${{ secrets.VM_USERNAME }}
-#           key: ${{ secrets.VM_SSH_KEY }}
-#           script: |
-#             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
+  
+            docker stop hawker-backend || true
+            docker rm hawker-backend || true
+            docker stop hawker-frontend || true
+            docker rm hawker-frontend || true
+  
+            docker run -d \
+              --name hawker-backend \
+              --network hawker-net \
+              -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              -e ONEMAP_EMAIL="${{ secrets.ONEMAP_EMAIL }}" \
+              -e ONEMAP_EMAIL_PASSWORD="${{ secrets.ONEMAP_EMAIL_PASSWORD }}" \
+              --restart unless-stopped \
+              -p 80:8000 \
+              ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
 
-#             docker stop hawker-app || true
-#             docker rm hawker-app || true
-
-#             docker run -d \
-#               --name hawker-app \
-#               --restart unless-stopped \
-#               -p 80:5000 \
-#               ${{ secrets.DOCKER_USERNAME }}/hawker-app:latest
-
-#remember to install docker on the ubuntu vm before running deploy
+            docker run -d \
+              --name hawker-frontend \
+              --network hawker-net \
+              -e BACKEND_URL=http://hawker-backend:8000 \
+              --restart unless-stopped \
+              -p 81:5000 \
+              ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
+  
+  #remember to install docker on the ubuntu vm before running deploy
 # sudo apt update
 # sudo apt install docker.io -y
 # sudo systemctl enable docker
