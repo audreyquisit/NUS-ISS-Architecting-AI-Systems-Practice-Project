@@ -1,11 +1,13 @@
 import json
 import os
 import re
+import sqlite3
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 _TRACE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "traces"))
+_DB_PATH = os.path.join(_TRACE_DIR, "traces.db")
 _SGT = timezone(timedelta(hours=8), name="SGT")
 _TRACE_NAME = re.compile(r"^(\d{6})_(\d{6})__([0-9a-f-]{36})\.json$", re.I)
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
@@ -290,6 +292,15 @@ def _purge_expired() -> None:
                 os.rmdir(directory)
             except OSError:
                 pass
+    _init_db()
+    connection = sqlite3.connect(_DB_PATH)
+    try:
+        for (request_id, file_path) in connection.execute("SELECT request_id, file_path FROM traces").fetchall():
+            if not os.path.exists(os.path.join(_TRACE_DIR, file_path)):
+                connection.execute("DELETE FROM traces WHERE request_id=?", (request_id,))
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def _organize_legacy_traces() -> None:
@@ -321,6 +332,67 @@ def _organize_legacy_traces() -> None:
             continue
 
 
+
+def _init_db() -> None:
+    os.makedirs(_TRACE_DIR, mode=0o700, exist_ok=True)
+    connection = sqlite3.connect(_DB_PATH)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS traces (
+                request_id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                intent TEXT,
+                status TEXT,
+                file_path TEXT NOT NULL
+            )
+        """)
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _db_upsert(request_id, timestamp, intent, status, file_path) -> None:
+    _init_db()
+    connection = sqlite3.connect(_DB_PATH)
+    try:
+        connection.execute("""
+            INSERT INTO traces (request_id, timestamp, intent, status, file_path)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(request_id) DO UPDATE SET
+                timestamp=excluded.timestamp,
+                intent=excluded.intent,
+                status=excluded.status,
+                file_path=excluded.file_path
+        """, (request_id, timestamp, None if intent is None else str(intent), None if status is None else str(status), file_path))
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _sync_index() -> None:
+    _init_db()
+    connection = sqlite3.connect(_DB_PATH)
+    try:
+        existing = {row[0] for row in connection.execute("SELECT request_id FROM traces")}
+    finally:
+        connection.close()
+    for path, name in _trace_files():
+        request_id = _request_id_from_filename(name)
+        if not request_id or request_id in existing:
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as source:
+                data = json.load(source)
+        except (OSError, ValueError, TypeError):
+            continue
+        timestamp = str(data.get("timestamp") or "")
+        intent = (data.get("response", {}).get("parsed_request") or {}).get("intent")
+        status = data.get("status", "success")
+        relative = os.path.relpath(path, _TRACE_DIR)
+        _db_upsert(request_id, timestamp, intent, status, relative)
+
+
 def save_trace(trace_data: dict[str, Any]) -> str:
     os.makedirs(_TRACE_DIR, mode=0o700, exist_ok=True)
     try:
@@ -350,6 +422,13 @@ def save_trace(trace_data: dict[str, Any]) -> str:
     except OSError:
         pass
     _update_latest_pointer(path)
+    _intent = None
+    _response = trace_data.get("response")
+    if isinstance(_response, dict):
+        _parsed = _response.get("parsed_request")
+        if isinstance(_parsed, dict):
+            _intent = _parsed.get("intent")
+    _db_upsert(request_id, _format_timestamp(timestamp), _intent, trace_data.get("status", "success"), os.path.relpath(path, _TRACE_DIR))
     return request_id
 
 
@@ -368,27 +447,31 @@ def load_trace(request_id: str) -> Optional[dict[str, Any]]:
 def list_traces(limit: int = 50) -> list[dict[str, Any]]:
     _organize_legacy_traces()
     _purge_expired()
+    _sync_index()
     if not os.path.exists(_TRACE_DIR):
         return []
+    _init_db()
+    connection = sqlite3.connect(_DB_PATH)
+    try:
+        rows = connection.execute(
+            "SELECT request_id, timestamp, intent, file_path FROM traces ORDER BY timestamp DESC LIMIT ?",
+            (max(1, min(int(limit), 100)),),
+        ).fetchall()
+    finally:
+        connection.close()
     traces = []
-    for path, name in _trace_files():
-        request_id = _request_id_from_filename(name)
-        if not request_id:
-            continue
+    for request_id, timestamp, intent, file_path in rows:
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            timestamp = _as_sgt(data.get("timestamp"), os.path.getmtime(path))
-            traces.append({
-                "request_id": request_id,
-                "timestamp": _format_timestamp(timestamp),
-                "timezone": "Asia/Singapore",
-                "intent": (data.get("response", {}).get("parsed_request") or {}).get("intent", ""),
-                "file": os.path.relpath(path, _TRACE_DIR),
-            })
-        except Exception:
-            continue
-    traces.sort(key=lambda item: item["timestamp"], reverse=True)
+            parsed_ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError:
+            parsed_ts = _as_sgt(timestamp)
+        traces.append({
+            "request_id": request_id,
+            "timestamp": timestamp,
+            "timezone": "Asia/Singapore",
+            "intent": intent or "",
+            "file": file_path,
+        })
     selected = traces[:max(1, min(int(limit), 100))]
     if selected:
         _update_latest_pointer(os.path.join(_TRACE_DIR, selected[0]["file"]))

@@ -21,6 +21,7 @@ from services.location_service import LocationServiceError
 from services.hawker_service import list_menu_stalls, search_menu_items
 from services.trace_store import save_trace
 from services.activity_log import log_activity
+from services import session_store
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
@@ -92,19 +93,153 @@ def run_orchestrator(
     }
 
 
+def _safe_location_result(location_data: dict) -> dict:
+    """Keep the reusable shortlist without coordinates or street addresses."""
+    selected = []
+    for item in (location_data.get("selected_centres") or []):
+        if not isinstance(item, dict) or not item.get("centre_id"):
+            continue
+        selected.append({
+            key: item.get(key)
+            for key in ("centre_id", "rank", "logistics_fit", "rationale")
+            if item.get(key) is not None
+        })
+    logistics = []
+    for item in (location_data.get("logistics") or []):
+        if not isinstance(item, dict) or not item.get("centre_id"):
+            continue
+        travel = item.get("travel") if isinstance(item.get("travel"), dict) else {}
+        logistics.append({
+            "centre_id": item.get("centre_id"),
+            "centre_name": item.get("centre_name"),
+            "travel": {
+                key: travel[key]
+                for key in (
+                    "total_duration_min", "mode", "transfers",
+                    "walking_distance_display", "walking_time_display",
+                    "source", "confidence",
+                )
+                if key in travel
+            },
+        })
+    return {"selected_centres": selected, "logistics": logistics}
+
+
+def _session_state_patch(response: dict) -> dict:
+    """Derive the persistable session state from an orchestrator response.
+
+    Only reusable, non-identifying fields are kept: the place the user named,
+    route preferences, the centre shortlist, and previously recommended menu
+    items. Coordinates, street addresses, and credentials are never stored.
+    """
+    location_data = response.get("location_data")
+    location_data = location_data if isinstance(location_data, dict) else {}
+    parsed = response.get("parsed_request")
+    parsed = parsed if isinstance(parsed, dict) else {}
+    verified = response.get("verified_results")
+    verified = verified if isinstance(verified, list) else []
+    interpretation = location_data.get("intent_interpretation")
+    interpretation = interpretation if isinstance(interpretation, dict) else {}
+
+    joined = next((
+        item for item in verified
+        if isinstance(item, dict) and item.get("agent") == "candidate_join"
+    ), {})
+    candidates = joined.get("candidates") if isinstance(joined, dict) else []
+    previous_ids = [
+        str(item.get("menu_item_id"))
+        for item in (candidates or [])
+        if isinstance(item, dict) and item.get("menu_item_id")
+    ]
+    weather = next((
+        item for item in verified
+        if isinstance(item, dict) and item.get("agent") == "weather"
+    ), {})
+    weather_payload = weather.get("payload") if isinstance(weather, dict) else {}
+    weather_data = (
+        weather_payload.get("weather") if isinstance(weather_payload, dict) else {}
+    )
+    condition = weather_data.get("condition") if isinstance(weather_data, dict) else None
+
+    origin_source = str(location_data.get("origin_source") or "")
+    state: dict[str, object] = {
+        "origin_source": origin_source or None,
+        "travel_mode": interpretation.get("travel_mode") or parsed.get("travel_mode"),
+        "max_travel_time_min": parsed.get("max_travel_time_min"),
+        "priorities": [str(item) for item in (parsed.get("priorities") or [])],
+        "previous_menu_item_ids": previous_ids,
+        "last_weather": str(condition) if condition else None,
+    }
+    if origin_source == "free_text_place":
+        # Only a place the user typed is safe to carry forward. A
+        # reverse-geocoded label would expose the user's own address.
+        state["location_text"] = str(location_data.get("origin_label") or "")
+    shortlist = _safe_location_result(location_data)
+    if shortlist["selected_centres"]:
+        if origin_source == "free_text_place":
+            shortlist["origin_label"] = str(location_data.get("origin_label") or "")
+        state["location_result"] = shortlist
+    return {key: value for key, value in state.items() if value not in (None, "", [], {})}
+
+
+def _resolve_session(payload: dict) -> tuple[Optional[str], dict]:
+    """Resolve the session for a request and load its stored context.
+
+    The stored context is canonical once a session holds one. A sessionless
+    request keeps using the context supplied by the client.
+    """
+    try:
+        session_id = session_store.ensure_session(payload.get("session_id"))
+    except Exception:
+        app.logger.exception("Session resolution failed")
+        return None, payload
+    try:
+        stored = session_store.get_context(session_id)
+    except Exception:
+        app.logger.exception("Session context load failed")
+        return session_id, payload
+    if not stored.get("turns") and not stored.get("state"):
+        return session_id, payload
+    return session_id, {**payload, "conversation_context": stored}
+
+
+def _append_session_turn(
+    session_id: Optional[str], role: str, content: str, request_id: str,
+) -> None:
+    if not session_id:
+        return
+    try:
+        session_store.append_turn(
+            session_id, role, content, {"request_id": request_id},
+        )
+    except Exception:
+        app.logger.exception("Session turn append failed")
+
+
+def _update_session_state(session_id: Optional[str], response: dict) -> None:
+    if not session_id:
+        return
+    try:
+        session_store.update_state(session_id, _session_state_patch(response))
+    except Exception:
+        app.logger.exception("Session state update failed")
+
+
 def _execute_and_trace(
     message: str, payload: dict, endpoint: str = "chat",
 ) -> dict:
     from services.activity_log import begin_activity_capture, end_activity_capture, log_activity
 
     request_id = str(uuid.uuid4())
+    session_id, resolved_payload = _resolve_session(payload)
     timestamp_start = _now_iso()
     started = monotonic()
     capture_token, events = begin_activity_capture()
     log_activity(request_id, "request.received", endpoint=endpoint, message_chars=len(message))
+    _append_session_turn(session_id, "user", message, request_id)
     try:
         try:
-            response = run_orchestrator(message, payload, request_id=request_id)
+            response = run_orchestrator(message, resolved_payload, request_id=request_id)
         except Exception as exc:
             log_activity(request_id, "request.failed", error_type=type(exc).__name__)
             timestamp_end = _now_iso()
@@ -152,7 +287,11 @@ def _execute_and_trace(
             "events": events,
             "response": response,
         })
-        return {"request_id": request_id, **response}
+        _append_session_turn(
+            session_id, "assistant", response.get("reply") or "", request_id,
+        )
+        _update_session_state(session_id, response)
+        return {"request_id": request_id, "session_id": session_id, **response}
     finally:
         end_activity_capture(capture_token)
 
@@ -204,9 +343,11 @@ def chat():
                 "I need a starting point to find nearby hawker centres. "
                 "Allow location access or name a nearby place."
             ),
+            "session_id": wrapped.get("session_id"),
         }), 422
     return jsonify({
         "request_id": wrapped["request_id"],
+        "session_id": wrapped.get("session_id"),
         "reply": wrapped["reply"],
         "structured": wrapped["structured"],
         "location_data": wrapped.get("location_data"),
@@ -230,6 +371,7 @@ def recommend():
         wrapped = _execute_and_trace(message, payload, endpoint="recommendation")
         return jsonify({
             "request_id": wrapped["request_id"],
+            "session_id": wrapped.get("session_id"),
             "reply": wrapped["reply"],
             "structured": wrapped["structured"],
             "location_data": wrapped.get("location_data"),
@@ -244,6 +386,7 @@ def recommend():
             wrapped = _execute_and_trace(message, payload, endpoint="recommendation")
             return jsonify({
                 "request_id": wrapped["request_id"],
+                "session_id": wrapped.get("session_id"),
                 "reply": wrapped["reply"],
                 "structured": wrapped["structured"],
                 "location_data": wrapped.get("location_data"),

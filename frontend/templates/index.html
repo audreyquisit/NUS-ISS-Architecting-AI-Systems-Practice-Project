@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +10,8 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -87,6 +89,7 @@
         opacity: 0;
         transform: translateY(6px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -172,8 +175,38 @@
       font-size: 13.5px;
       margin-top: 8px;
     }
+
+    .reasoning-segment {
+      margin-top: 10px;
+      padding: 8px 10px 4px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: #4b5563;
+    }
+
+    .reasoning-segment summary {
+      cursor: pointer;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .reasoning-segment[open] summary {
+      color: #0f172a;
+    }
+
+    .reasoning-segment pre {
+      white-space: pre-wrap;
+      font-family: inherit;
+      margin: 6px 0 0 0;
+      color: #374151;
+    }
   </style>
 </head>
+
 <body>
   <div class="app">
     <div class="header">
@@ -189,12 +222,7 @@
     </div>
 
     <form class="input-row" id="chatForm" autocomplete="off">
-      <input
-        id="messageInput"
-        type="text"
-        placeholder="e.g., I want chicken rice under $5 near Tampines..."
-        required
-      />
+      <input id="messageInput" type="text" placeholder="e.g., I want chicken rice under $5 near Tampines..." required />
       <button type="submit" id="sendButton">Send</button>
     </form>
   </div>
@@ -206,12 +234,37 @@
     const sendButton = document.getElementById("sendButton");
     const conversationTurns = [];
     let conversationState = {};
-    let pendingLocationRequest = null;
+    let locationPermissionDeclined = false;
     let lastRequestId = null;
     let locationDataCache = {};
     let lastWeather = null;
+    let sessionId = null;
 
-    function appendMessage(role, text, requestId) {
+    const messageHistory = [];
+    let restoringHistory = false;
+
+    function saveHistory() {
+      while (messageHistory.length) {
+        try {
+          sessionStorage.setItem("chatHistory", JSON.stringify(messageHistory));
+          return;
+        } catch (e) {
+          messageHistory.shift();
+        }
+      }
+      try { sessionStorage.removeItem("chatHistory"); } catch (e) {}
+    }
+
+    // The backend owns the conversation for a session, so keep the returned
+    // session id and reuse it on the next turn.
+    function adoptSessionId(data) {
+      if (!data || !data.session_id) return;
+      sessionId = data.session_id;
+      try { sessionStorage.setItem("chatSessionId", sessionId); } catch (e) {}
+    }
+
+    function appendMessage(role, text, requestId, reasoningSegments) {
+      reasoningSegments = reasoningSegments || [];
       const el = document.createElement("div");
       el.className = "message " + role;
       el.textContent = role === "bot" ? text.replace(/\*\*/g, "") : text;
@@ -219,14 +272,31 @@
       if (requestId) {
         const link = document.createElement("a");
         link.href = `/trace/${requestId}`;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
         link.textContent = "View trace";
         link.style.display = "block";
         link.style.fontSize = "11px";
         link.style.color = "#6b7280";
         link.style.marginTop = "4px";
         el.appendChild(link);
+      }
+      if (!restoringHistory) {
+        messageHistory.push({ role, text, requestId: requestId || null, reasoningSegments: reasoningSegments || [] });
+        saveHistory();
+      }
+      // Render the explainable reasoning segment(s) produced by the agents.
+      if (role === "bot" && reasoningSegments.length) {
+        reasoningSegments.forEach(function (segment) {
+          if (!segment.text) return;
+          const details = document.createElement("details");
+          const summary = document.createElement("summary");
+          summary.textContent = segment.label + " reasoning";
+          details.className = "reasoning-segment";
+          details.appendChild(summary);
+          const pre = document.createElement("pre");
+          pre.textContent = segment.text;
+          details.appendChild(pre);
+          el.appendChild(details);
+        });
       }
       scrollToBottom();
     }
@@ -263,140 +333,6 @@
       });
     }
 
-    function askLocationConsent() {
-      const el = document.createElement("div");
-      el.className = "message bot";
-      const text = document.createElement("div");
-      text.textContent = "To find nearby hawker options, may I use your current location?";
-      el.appendChild(text);
-
-      const actions = document.createElement("div");
-      actions.style.display = "flex";
-      actions.style.flexWrap = "wrap";
-      actions.style.gap = "8px";
-      actions.style.marginTop = "10px";
-      [
-        ["Yes, use my location", useBrowserLocation],
-        ["No, I’ll enter a place", askForManualLocation],
-      ].forEach(([label, callback]) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = label;
-        button.style.padding = "8px 11px";
-        button.style.border = "1px solid #d1d5db";
-        button.style.borderRadius = "9px";
-        button.style.background = "#ffffff";
-        button.style.color = "#1f2937";
-        button.style.cursor = "pointer";
-        button.addEventListener("click", callback);
-        actions.appendChild(button);
-      });
-      el.appendChild(actions);
-      messagesEl.appendChild(el);
-      scrollToBottom();
-    }
-
-    function askForManualLocation() {
-      if (!pendingLocationRequest) return;
-      pendingLocationRequest.awaitingPlace = true;
-      input.placeholder = "Enter a nearby landmark, MRT station, or address...";
-      const el = document.createElement("div");
-      el.className = "message bot";
-      const text = document.createElement("div");
-      text.textContent = "No problem. Type a nearby landmark, MRT station, or address, and I’ll use it as your starting point.";
-      el.appendChild(text);
-      messagesEl.appendChild(el);
-      scrollToBottom();
-      input.focus();
-    }
-
-    function recordSuccessfulResponse(data, userMessage) {
-      lastRequestId = data.request_id || null;
-      appendMessage("bot", data.reply || "No reply received.", lastRequestId);
-      conversationTurns.push({ role: "user", content: userMessage });
-      conversationTurns.push({ role: "assistant", content: data.reply || "" });
-
-      const locationData = data.location_data || {};
-      const parsedData = data.parsed_request || {};
-      const newlyRecommendedIds = (data.verified_results || [])
-        .filter((result) => result.agent === "candidate_join")
-        .flatMap((result) => (result.candidates || []).map((item) => item.menu_item_id))
-        .filter(Boolean);
-      locationDataCache = locationData.selected_centres?.length ? locationData : locationDataCache;
-      const weatherAgent = (data.verified_results || []).find(r => r.agent === "weather");
-      lastWeather = weatherAgent?.payload?.weather?.condition || lastWeather;
-      conversationState = {
-        ...conversationState,
-        origin_label: locationData.origin_label || conversationState.origin_label,
-        origin_source: locationData.origin_source || conversationState.origin_source,
-        location_text: locationData.origin_source === "free_text_place"
-          ? (locationData.origin_label || conversationState.location_text)
-          : conversationState.location_text,
-        travel_mode: locationData.intent_interpretation?.travel_mode || conversationState.travel_mode,
-        max_travel_time_min: parsedData.max_travel_time_min ?? conversationState.max_travel_time_min,
-        priorities: parsedData.priorities?.length
-          ? parsedData.priorities
-          : conversationState.priorities,
-        location_result: locationData.selected_centres?.length
-          ? locationData
-          : conversationState.location_result,
-        previous_menu_item_ids: newlyRecommendedIds.length
-          ? newlyRecommendedIds
-          : conversationState.previous_menu_item_ids,
-        last_weather: lastWeather,
-      };
-      pendingLocationRequest = null;
-      input.placeholder = "e.g., I want chicken rice under $5 near Tampines...";
-    }
-
-    async function useBrowserLocation() {
-      if (!pendingLocationRequest) return;
-      sendButton.disabled = true;
-      showTyping();
-      try {
-        const userLocation = await getCurrentLocation();
-        hideTyping();
-        if (!userLocation) {
-          appendMessage("bot", "I couldn’t access your current location. You can allow location access in your browser, or enter a nearby place instead.");
-          askForManualLocation();
-          return;
-        }
-
-        showTyping();
-        const pending = pendingLocationRequest;
-        const retryPayload = { ...pending.payload, user_location: userLocation };
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(retryPayload),
-        });
-        const data = await response.json().catch(() => ({}));
-        hideTyping();
-        if (response.ok) {
-          recordSuccessfulResponse(data, pending.message);
-        } else if (data.code === "location_required" || data.code === "location_resolution_failed") {
-          if (pending.awaitingPlace) {
-            pendingLocationRequest = pending;
-            appendMessage("bot", data.error || "I couldn’t use that place. Try a nearby landmark, MRT station, or address.");
-            askForManualLocation();
-          } else {
-            appendMessage("bot", data.error || "I couldn’t use that location. Please enter a nearby place.");
-            askForManualLocation();
-          }
-        } else {
-          pendingLocationRequest = null;
-          appendMessage("bot", data.error || "The location request could not be completed.");
-        }
-      } catch (err) {
-        hideTyping();
-        appendMessage("bot", "I couldn’t retrieve your location. Please enter a nearby place instead.");
-        askForManualLocation();
-      } finally {
-        sendButton.disabled = false;
-        input.focus();
-      }
-    }
-
     async function sendMessage(message) {
       appendMessage("user", message);
       input.value = "";
@@ -404,24 +340,14 @@
       showTyping();
 
       try {
-        const manualLocation = pendingLocationRequest?.awaitingPlace
-          ? pendingLocationRequest
-          : null;
-        const combinedMessage = manualLocation
-          ? `${manualLocation.message}\nManual location answer: ${message}`
-          : message;
-        const payload = manualLocation
-          ? {
-              ...manualLocation.payload,
-              message: combinedMessage,
-            }
-          : {
-              message,
-              conversation_context: {
-                state: conversationState,
-                turns: conversationTurns.slice(-8),
-              },
-            };
+        const payload = {
+          message,
+          session_id: sessionId,
+          conversation_context: {
+            state: conversationState,
+            turns: conversationTurns.slice(-8),
+          },
+        };
         const postChat = (body) => fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -429,40 +355,87 @@
         });
         let response = await postChat(payload);
         let data = await response.json().catch(() => ({}));
+        adoptSessionId(data);
 
-        const locationRequired = response.status === 422 && (
-          data.code === "location_required" ||
-          (data.error || "").startsWith("I need a starting point") ||
-          data.error === "I need a starting location."
-        );
-        if (locationRequired) {
-          hideTyping();
-          if (manualLocation) {
-            pendingLocationRequest = manualLocation;
-            appendMessage("bot", data.error || "I still need a starting place. Try a landmark, MRT station, or address.");
-            askForManualLocation();
+        // Ask for browser location only when the message/session had no place.
+        if (response.status === 422 && (data.error || "").startsWith("I need a starting point")
+          && !locationPermissionDeclined) {
+          const userLocation = await getCurrentLocation();
+          if (userLocation) {
+            payload.user_location = userLocation;
+            response = await postChat(payload);
+            data = await response.json().catch(() => ({}));
+            adoptSessionId(data);
           } else {
-            pendingLocationRequest = { message, payload };
-            askLocationConsent();
+            locationPermissionDeclined = true;
           }
-          return;
         }
 
         hideTyping();
         if (!response.ok) {
           const reply = data.error || "The location request could not be completed.";
           appendMessage("bot", reply);
-          if (manualLocation) {
-            pendingLocationRequest = manualLocation;
-            askForManualLocation();
-          } else {
-            conversationTurns.push({ role: "user", content: message });
-            conversationTurns.push({ role: "assistant", content: reply });
-          }
+          conversationTurns.push({ role: "user", content: message });
+          conversationTurns.push({ role: "assistant", content: reply });
           return;
         }
 
-        recordSuccessfulResponse(data, combinedMessage);
+        lastRequestId = data.request_id || null;
+        const locationData = data.location_data || {};
+        const reasoningSegments = [];
+        if (locationData.reasoning) {
+          reasoningSegments.push({
+            label: "Location",
+            text: locationData.reasoning,
+          });
+        }
+        const queueResult = (data.verified_results || []).find(
+          (item) => item.agent === "queue"
+        );
+        if (queueResult && queueResult.payload && queueResult.payload.reasoning) {
+          reasoningSegments.push({
+            label: "Queue",
+            text: queueResult.payload.reasoning,
+          });
+        }
+        appendMessage(
+          "bot",
+          data.reply || "No reply received.",
+          lastRequestId,
+          reasoningSegments,
+        );
+        conversationTurns.push({ role: "user", content: message });
+        conversationTurns.push({ role: "assistant", content: data.reply || "" });
+        locationDataCache = locationData.selected_centres?.length ? locationData : locationDataCache;
+        const parsedData = data.parsed_request || {};
+        const joinedResults = (data.verified_results || []).find(
+          (result) => result.agent === "candidate_join"
+        );
+        const newlyRecommendedIds = (joinedResults?.candidates || [])
+          .map((item) => item.menu_item_id)
+          .filter(Boolean);
+        const weatherAgent = (data.verified_results || []).find(r => r.agent === "weather");
+        lastWeather = weatherAgent?.payload?.weather?.condition || lastWeather;
+        conversationState = {
+          ...conversationState,
+          origin_label: locationData.origin_label || conversationState.origin_label,
+          origin_source: locationData.origin_source || conversationState.origin_source,
+          location_text: locationData.origin_source === "free_text_place"
+            ? (locationData.origin_label || conversationState.location_text)
+            : conversationState.location_text,
+          travel_mode: locationData.intent_interpretation?.travel_mode || conversationState.travel_mode,
+          max_travel_time_min: parsedData.max_travel_time_min ?? conversationState.max_travel_time_min,
+          priorities: parsedData.priorities?.length
+            ? parsedData.priorities
+            : conversationState.priorities,
+          location_result: locationData.selected_centres?.length
+            ? locationData
+            : conversationState.location_result,
+          previous_menu_item_ids: newlyRecommendedIds.length
+            ? newlyRecommendedIds
+            : conversationState.previous_menu_item_ids,
+          last_weather: lastWeather,
+        };
       } catch (err) {
         hideTyping();
         appendMessage("bot", "Network error. Please try again.");
@@ -500,7 +473,27 @@
       sendMessage(message);
     });
 
+    // Restore chat history after a reload/navigation.
+    try {
+      const savedSessionId = sessionStorage.getItem("chatSessionId");
+      if (savedSessionId) sessionId = savedSessionId;
+      const saved = JSON.parse(sessionStorage.getItem("chatHistory") || "[]");
+      if (Array.isArray(saved) && saved.length) {
+        restoringHistory = true;
+        saved.forEach(function (item) {
+          appendMessage(item.role, item.text, item.requestId, item.reasoningSegments || []);
+          if (item.role === "user") {
+            conversationTurns.push({ role: "user", content: item.text });
+          } else if (item.role === "bot") {
+            conversationTurns.push({ role: "assistant", content: item.text });
+          }
+        });
+        restoringHistory = false;
+      }
+    } catch (e) {}
+
     setInterval(sendHeartbeat, 120000);
   </script>
 </body>
+
 </html>
