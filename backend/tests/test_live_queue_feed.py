@@ -36,9 +36,9 @@ class LiveQueueFeedTests(unittest.TestCase):
         self.assertTrue(all(
             record["hawker_centre_id"] in centre_ids
             and record["hawker_centre_id"] == stalls_by_id[stall_id]["hawker_centre_id"]
-            and record["queue_is_mock"] is True
-            and record["source"] == "synthetic_queue_mock"
-            and "not a live" in record["queue_mock_notice"]
+            and record["queue_is_simulated"] is True
+            and record["source"] == "simulated_queue_estimate"
+            and "not a live" in record["queue_estimate_notice"]
             for stall_id, record in records.items()
         ))
         self.assertTrue(any(not record["is_mock"] for record in records.values()))
@@ -52,7 +52,7 @@ class LiveQueueFeedTests(unittest.TestCase):
             {item["hawker_centre_id"] for item in records},
             {"newton_food_centre"},
         )
-        self.assertTrue(all(item["queue_is_mock"] for item in records))
+        self.assertTrue(all(item["queue_is_simulated"] for item in records))
         self.assertTrue(all(not item["is_mock"] for item in records))
 
     def test_mock_queue_values_are_stable_and_copies_are_isolated(self):

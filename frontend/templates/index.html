@@ -204,6 +204,23 @@
       margin: 6px 0 0 0;
       color: #374151;
     }
+
+    .sources-strip {
+      align-self: flex-start;
+      margin-top: 6px;
+      padding: 6px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+      color: #6b7280;
+      font-size: 11.5px;
+      max-width: 560px;
+    }
+
+    .sources-strip .sources-label {
+      font-weight: 600;
+      color: #4b5563;
+    }
   </style>
 </head>
 
@@ -263,12 +280,48 @@
       try { sessionStorage.setItem("chatSessionId", sessionId); } catch (e) {}
     }
 
-    function appendMessage(role, text, requestId, reasoningSegments) {
+    // The reply ends with a provenance line. It is shown as its own strip
+    // under the message rather than as part of the answer.
+    function splitSources(text) {
+      const match = /(^|\n)\s*Sources:\s*(.+)\s*$/s.exec(text || "");
+      if (!match) return { body: text || "", sources: "" };
+      return {
+        body: text.slice(0, match.index).trim(),
+        sources: match[2].trim(),
+      };
+    }
+
+    // The strip shows the source names the backend reported. No text is
+    // invented here; when the backend reports none, the reply's own
+    // provenance line is used instead.
+    function sourceStripText(sources) {
+      if (!Array.isArray(sources) || !sources.length) return "";
+      return sources.map(function (source) {
+        if (!source || !source.name) return "";
+        const asOf = source.as_of || source.retrieved_at;
+        return asOf ? source.name + " (as of " + asOf + ")" : source.name;
+      }).filter(Boolean).join("; ");
+    }
+
+    function appendMessage(role, text, requestId, reasoningSegments, sources) {
       reasoningSegments = reasoningSegments || [];
       const el = document.createElement("div");
       el.className = "message " + role;
-      el.textContent = role === "bot" ? text.replace(/\*\*/g, "") : text;
+      const parts = role === "bot" ? splitSources(text) : { body: text, sources: "" };
+      const reported = role === "bot" ? sourceStripText(sources) : "";
+      el.textContent = role === "bot" ? parts.body.replace(/\*\*/g, "") : text;
       messagesEl.appendChild(el);
+      const stripText = reported || parts.sources;
+      if (stripText) {
+        const strip = document.createElement("div");
+        strip.className = "sources-strip";
+        const label = document.createElement("span");
+        label.className = "sources-label";
+        label.textContent = "Sources: ";
+        strip.appendChild(label);
+        strip.appendChild(document.createTextNode(stripText));
+        messagesEl.appendChild(strip);
+      }
       if (requestId) {
         const link = document.createElement("a");
         link.href = `/trace/${requestId}`;
@@ -403,6 +456,7 @@
           data.reply || "No reply received.",
           lastRequestId,
           reasoningSegments,
+          (data.structured || {}).sources
         );
         conversationTurns.push({ role: "user", content: message });
         conversationTurns.push({ role: "assistant", content: data.reply || "" });

@@ -10,57 +10,207 @@ from services.location_service import load_hawker_centres
 
 
 STALLS_FILE = Path(__file__).resolve().parents[1] / "data" / "hawker_stall.json"
-MOCK_STALLS_FILE = Path(__file__).resolve().parents[1] / "data" / "hawker_stall_mock.json"
 
 # Dietary preferences that require structured data (ingredients, allergens,
 # certification) to verify. The Wak-Wak catalogue does not have these fields,
 # so any verifiable restriction cannot be confirmed from the source alone and
 # must short-circuit to an empty result.
-# Values are in _normalise form (spaces, no hyphens) to match how diets
-# are normalised before lookup in find_dietary_stalls and the verifier.
+# Diets with structured certification/allergen data that can be verified:
+#   vegetarian, vegan, no pork, no beef, gluten free, dairy free, nut free,
+#   seafood free
 VERIFIABLE_DIETS = frozenset({
     "vegetarian", "vegan", "no pork", "no beef",
     "gluten free", "dairy free", "nut free", "seafood free",
 })
-
-# Diets that are *inferred* from stall name/category heuristics (see
-# scripts/infer_dietary_tags.py) and stored in each stall's ``dietary_tags``
-# list. They are additive, source-derived hints — not certification — so they
-# can be matched against catalogue entries, but they must be labelled as
-# inferred in any recommendation.
-#   halal    - category/name mentions Malay or Muslim
-#   healthy  - Yong Tau Foo / vegetable-centric dishes
-#   unhealthy- fried items, desserts / snacks
-INFERRED_DIETS = frozenset({"halal", "healthy", "unhealthy"})
 
 
 def _normalise(value: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())
 
 
+def _record_sources(stall: dict[str, Any]) -> list[str]:
+    """Return the sources that hold a value for this stall."""
+    if stall.get("data_origin") == "crowdsourced_unverified":
+        return ["crowdsourced"]
+    sources = ["wak_wak_hawker"]
+    if stall.get("is_mock"):
+        sources = ["synthetic_demo"]
+    if stall.get("healthier_dining"):
+        sources.append("hpb_healthier_dining")
+    if stall.get("halal_certified"):
+        sources.append("muis_halal")
+    if stall.get("merchant_list_name"):
+        sources.append("dbs_paylah_directory")
+    if stall.get("crowdsourced_source"):
+        sources.append("crowdsourced")
+    return sources
+
+
+def _crowdsourced_fields(
+    stalls: list[dict[str, Any]], centres: list[dict[str, Any]]
+) -> dict[str, dict[str, Any]]:
+    """Return the community values of every stall, where they fill a gap."""
+    from services import crowdsourced_service
+
+    records = crowdsourced_service.get_crowdsourced_records()
+    if not records:
+        return {}
+    linked = crowdsourced_service.link_to_stalls(records, stalls, centres)
+    fields: dict[str, dict[str, Any]] = {}
+    for stall in stalls:
+        stall_id = stall.get("stall_id")
+        entry = linked.get(stall_id)
+        if not entry:
+            continue
+        probe = {
+            "menu_items": [dict(item) for item in stall.get("menu_items", [])],
+            "cuisine": stall.get("category"),
+            "opening_hours": stall.get("opening_hours"),
+        }
+        crowdsourced_service.apply_to_stall(probe, entry)
+        filled = {
+            key: value for key, value in probe.items()
+            if key.startswith("crowdsourced_") and value is not None
+        }
+        if filled:
+            fields[stall_id] = filled
+    return fields
+
+
+def _crowdsourced_stalls(
+    stalls: list[dict[str, Any]], centres: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Return the community stalls that name no catalogue stall.
+
+    A community record that sits at a NEA centre but matches no catalogue
+    stall still describes a stall. It becomes its own record, marked as
+    community reported, so the gap in the catalogue is visible rather than
+    silently missing.
+    """
+    from services import crowdsourced_service
+
+    records = crowdsourced_service.get_crowdsourced_records()
+    if not records:
+        return []
+    by_id = {centre["id"]: centre for centre in centres}
+    results = []
+    for record in crowdsourced_service.unmatched_records(records, stalls, centres):
+        centre = by_id.get(record.get("centre_id") or "")
+        if not centre:
+            continue
+        name = record.get("name")
+        if not name:
+            continue
+        menu = record.get("menu") or []
+        if not menu:
+            # A community record with no dish describes no dish to recommend.
+            continue
+        items = []
+        for index, entry in enumerate(menu):
+            item_name = str(entry.get("name") or "").strip()
+            if not item_name:
+                continue
+            price_label = str(entry.get("price") or "").strip() or None
+            items.append({
+                "menu_item_id": f"crowdsourced_{centre['id']}_{index}",
+                "name": item_name,
+                "price_status": "fixed" if price_label else "unavailable",
+                "price_sgd_min": _price_amount(price_label),
+                "price_sgd_max": _price_amount(price_label),
+                "dietary_tags": [],
+            })
+        if not items:
+            continue
+        stall_id = f"crowdsourced_{centre['id']}_{_normalise(name).replace(' ', '_')}"
+        results.append({
+            "stall_id": stall_id,
+            "hawker_centre_id": centre["id"],
+            "name": name,
+            "location": record.get("unit_number") or "",
+            "category": record.get("cuisine") or "",
+            "menu_items": items,
+            "crowdsourced_menu": menu,
+            "crowdsourced_price": record.get("price"),
+            "crowdsourced_cuisine": record.get("cuisine"),
+            "crowdsourced_opening": record.get("opening"),
+            "crowdsourced_source": "hawkercentral community listing",
+            "crowdsourced_as_of": record.get("as_of"),
+            "crowdsourced_is_stale": bool(record.get("is_stale")),
+            "data_as_of": record.get("as_of"),
+            "data_origin": "crowdsourced_unverified",
+            "is_mock": False,
+        })
+    return results
+
+
+def _price_amount(label: Optional[str]) -> Optional[float]:
+    """Return the amount of a price label such as "$7.00"."""
+    if not label:
+        return None
+    match = re.search(r"(\d+(?:\.\d+)?)", str(label))
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
 @lru_cache(maxsize=1)
 def _menu_catalogue() -> tuple[dict[str, Any], ...]:
     payload = json.loads(STALLS_FILE.read_text(encoding="utf-8"))
-    mock_payload = (
-        json.loads(MOCK_STALLS_FILE.read_text(encoding="utf-8"))
-        if MOCK_STALLS_FILE.exists() else {"stalls": []}
-    )
     centres = {item["id"]: item for item in load_hawker_centres()}
+    stalls = payload.get("stalls", [])
+    crowdsourced = _crowdsourced_fields(stalls, list(centres.values()))
+    community_stalls = _crowdsourced_stalls(stalls, list(centres.values()))
     records = []
-    for stall in payload.get("stalls", []) + mock_payload.get("stalls", []):
+    for stall in stalls + community_stalls:
         centre_id = stall.get("hawker_centre_id")
-        centre = centres.get(centre_id)
+        centre = centres.get(centre_id) if centre_id else None
+        centre_match_method = stall.get("centre_match_method")
         # The location agent only recommends centres in the NEA catalogue.
         # Keep unmatched source records in the JSON, but don't present them as
         # verified hawker-centre options.
         if not centre:
-            continue
+            # Fall back to matching by hawker_centre text name against
+            # catalogue centre names (e.g. Wak-Wak stalls with no
+            # hawker_centre_id linking them to the NEA catalogue).
+            wanted_name = _normalise(stall.get("hawker_centre") or "")
+            if wanted_name:
+                for c in centres.values():
+                    if _normalise(c.get("name")) == wanted_name or _normalise(
+                        c.get("official_name", "")
+                    ) == wanted_name:
+                        centre = c
+                        centre_id = c["id"]
+                        if centre_match_method is None:
+                            centre_match_method = "name_unique"
+                        break
+            if not centre:
+                continue
         categories = [
             part.strip()
             for part in str(stall.get("category") or "").split(",")
             if part.strip()
         ]
         unit = re.search(r"#\s*([A-Za-z0-9/-]+)", str(stall.get("location") or ""))
+        # A community stall carries its own values; a catalogue stall carries
+        # the values that filled a gap. Both end up on the record.
+        community_values = {
+            key: stall.get(key)
+            for key in (
+                "crowdsourced_menu",
+                "crowdsourced_price",
+                "crowdsourced_cuisine",
+                "crowdsourced_opening",
+                "crowdsourced_notice",
+            )
+            if stall.get(key) is not None
+        }
+        crowd_values = {
+            **crowdsourced.get(stall.get("stall_id"), {}),
+            **community_values,
+        }
         for item in stall.get("menu_items", []):
             item_name = str(item.get("name") or "").strip()
             if not item_name:
@@ -118,6 +268,24 @@ def _menu_catalogue() -> tuple[dict[str, Any], ...]:
                 "data_origin": stall.get("data_origin", "wak_wak_source"),
                 "is_mock": bool(stall.get("is_mock", False)),
                 "mock_notice": stall.get("mock_notice"),
+                # Source-owned fields. Each one states which source it came
+                # from and the date that source is as of, so a reply can name
+                # the source instead of asserting the fact on its own.
+                "halal_certified": stall.get("halal_certified"),
+                "halal_certificate_no": stall.get("halal_certificate_no"),
+                "halal_source": stall.get("halal_source"),
+                "halal_as_of": stall.get("halal_as_of"),
+                "healthier_dining": stall.get("healthier_dining"),
+                "healthier_criteria": stall.get("healthier_criteria"),
+                "healthier_source": stall.get("healthier_source"),
+                "healthier_as_of": stall.get("healthier_as_of"),
+                "merchant_list_name": stall.get("merchant_list_name"),
+                "merchant_unit_number": stall.get("merchant_unit_number"),
+                "merchant_source": stall.get("merchant_source"),
+                "centre_match_method": centre_match_method,
+                "data_as_of": stall.get("data_as_of"),
+                "sources": _record_sources(stall),
+                **crowd_values,
             })
     return tuple(records)
 
@@ -170,6 +338,66 @@ def get_menu_stall_id(stall_name: str, hawker_centre_id: Optional[str]) -> Optio
         ):
             return item["stall_id"]
     return None
+
+
+def get_merchant_stalls(
+    centre_ids: list[str],
+    terms: Optional[list[str]] = None,
+    limit_per_centre: int = 6,
+) -> list[dict[str, Any]]:
+    """Return the merchant-listed stalls of the given centres.
+
+    The merchant directory lists real stall names and unit numbers, but no
+    menu, price, dietary or opening data. It is the only source that names
+    the stalls of a centre the menu catalogue does not cover, so a reply can
+    name them and say what is not known.
+    """
+    wanted_ids = [value for value in (centre_ids or []) if value]
+    if not wanted_ids:
+        return []
+    centres = {item["id"]: item for item in load_hawker_centres()}
+    search_terms = [
+        _normalise(term) for term in (terms or []) if str(term or "").strip()
+    ]
+    entries = []
+    for centre_id in wanted_ids:
+        centre = centres.get(centre_id)
+        if not centre:
+            continue
+        merchants = centre.get("merchant_stalls") or []
+        matched = [
+            merchant for merchant in merchants
+            if merchant.get("name")
+            and (
+                not search_terms
+                or any(
+                    term in _normalise(merchant.get("name"))
+                    for term in search_terms
+                )
+            )
+        ]
+        if not matched:
+            continue
+        entries.append({
+            "centre_id": centre_id,
+            "centre_name": centre.get("name"),
+            "merchants": [
+                {
+                    "name": merchant.get("name"),
+                    "unit_number": merchant.get("unit_number"),
+                }
+                for merchant in matched[:limit_per_centre]
+            ],
+            "merchant_count": len(matched),
+            "source": centre.get("merchant_source"),
+            "as_of": centre.get("merchant_as_of"),
+            "note": (
+                "The merchant directory lists the stall name and unit only. It "
+                "carries no menu, price, dietary or opening data for these "
+                "stalls."
+            ),
+        })
+    return entries
 
 
 @lru_cache(maxsize=1)
@@ -229,7 +457,7 @@ def find_dietary_stalls(
     # to confirm. Inferred heuristics such as "healthy", "unhealthy", and
     # "halal" (when derived from Malay/Muslim stall signals) are matched
     # against the catalogue's inferred dietary_tags instead.
-    verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS and d not in INFERRED_DIETS]
+    verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS]
     if verifiable_diets:
         return []
 
@@ -252,9 +480,9 @@ def find_dietary_stalls(
             if not all(_normalise(term) in searchable for term in dishes):
                 continue
         item_tags = set(item.get("dietary_tags", []))
-        matched_diets = [d for d in diets if d in item_tags]
+        matched_diets = [d for d in diets if d in VERIFIABLE_DIETS and d in item_tags]
         if diets and not matched_diets:
-            # An inferred diet was requested but this item does not carry it.
+            # A verifiable diet was requested but this item does not carry it.
             continue
         filtered.append({
             **item,

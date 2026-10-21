@@ -1,0 +1,11 @@
+{
+  "dataset_id": "d_4a086da0a5553be1d89383cd90d07ecd",
+  "dataset_url": "https://data.gov.sg/datasets/d_4a086da0a5553be1d89383cd90d07ecd/view",
+  "licence": "Singapore Open Data Licence (data.gov.sg)",
+  "list_url": "https://www.nea.gov.sg/docs/default-source/hawker-centres-documents/list-of-hcs_-23-july-2026.pdf",
+  "list_as_of": "2026-07-23",
+  "geojson_record_updated": "20241211100036",
+  "centre_count": 123,
+  "list_row_count": 123,
+  "generated_at": "2026-10-20T16:25:17+00:00"
+}

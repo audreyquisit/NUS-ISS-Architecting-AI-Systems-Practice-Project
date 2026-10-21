@@ -19,6 +19,7 @@ from agents.location_agent import LocationResolutionError, run as run_location_a
 from models.location_models import LocationQuery
 from services.location_service import LocationServiceError
 from services.hawker_service import list_menu_stalls, search_menu_items
+from services.sources_registry import collect_evidence_sources, sources_for
 from services.trace_store import save_trace
 from services.activity_log import log_activity
 from services import session_store
@@ -77,12 +78,18 @@ def run_orchestrator(
         {"agent": task.agent, "task": _canonical_worker_task(task.agent, parsed_request)}
         for task in result.get("tasks", [])
     ]
+    # Only the sources that are present in the evidence are exposed, so the
+    # reply and the client strip can never name a source that was not used.
+    source_keys, source_dates = collect_evidence_sources(agent_results)
+    sources = sources_for(source_keys)
     return {
         "reply": result.get("final_recommendation", ""),
         "structured": {
             "parsed_request": parsed_request,
             "worker_plan": worker_plan,
             "verified_results": verified_results,
+            "sources": sources,
+            "source_dates": source_dates,
         },
         "location_data": location_data,
         "agent_results": agent_results,
@@ -517,6 +524,19 @@ def evaluate_location():
     except Exception:
         app.logger.exception("Location & Logistics agent failed")
         return jsonify({"error": "Location assessment failed."}), 502
+
+
+@app.route("/api/sources", methods=["GET"])
+def api_sources():
+    """List every source the assistant may cite, with its provenance."""
+    from services.coverage_service import coverage_summary
+    from services.sources_registry import get_sources_registry
+
+    return jsonify({
+        "count": len(get_sources_registry()),
+        "sources": get_sources_registry(),
+        "coverage": coverage_summary(),
+    })
 
 
 if __name__ == "__main__":

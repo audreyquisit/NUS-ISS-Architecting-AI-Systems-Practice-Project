@@ -2,7 +2,7 @@ import json
 import os
 from typing import Optional
 
-from services.hawker_service import INFERRED_DIETS, find_dietary_stalls
+from services.hawker_service import VERIFIABLE_DIETS, find_dietary_stalls
 
 
 DIETARY_KEYWORDS = (
@@ -30,6 +30,7 @@ CUISINE_KEYWORDS = (
     "western",
     "noodle",
     "rice",
+    "dessert",
 )
 
 
@@ -178,6 +179,17 @@ def run(
     inferred_dietary = _extract_keywords(source_text, DIETARY_KEYWORDS)
     inferred_cuisine = _extract_keywords(source_text, CUISINE_KEYWORDS)
 
+    # Cuisine-type terms (e.g. "dessert") extracted as menu-item preferences
+    # should be treated as cuisine preferences, not matched against menu item names.
+    menu_item_preferences = list(menu_item_preferences or [])
+    cuisine_preferences = list(cuisine_preferences or [])
+    cuisine_type_menu_prefs = [m for m in menu_item_preferences if m in CUISINE_KEYWORDS]
+    if cuisine_type_menu_prefs:
+        menu_item_preferences = [m for m in menu_item_preferences if m not in CUISINE_KEYWORDS]
+        for pref in cuisine_type_menu_prefs:
+            if pref not in cuisine_preferences:
+                cuisine_preferences.append(pref)
+
     final_dietary = list(dietary_preferences or [])
     for item in inferred_dietary:
         if item not in final_dietary:
@@ -202,7 +214,30 @@ def run(
     limitations = []
     confidence = 0.3
     scored_stalls = list(stalls)
-    inferred_diets = [diet for diet in final_dietary if diet in INFERRED_DIETS]
+
+    # Non-verifiable dietary preferences (e.g. halal, healthy, unhealthy)
+    # cannot be confirmed from menu data alone — they require MUIS
+    # certification or ingredient/allergen fields that the source lacks.
+    # Return no candidates rather than unverified items.
+    verifiable = [d for d in final_dietary if d in VERIFIABLE_DIETS]
+    if final_dietary and not verifiable:
+        limitations.append(
+            "Dietary preference(s) "
+            f"{', '.join(final_dietary)} require certification or ingredient "
+            "data not available in the menu source; no verified matches can "
+            "be returned."
+        )
+        return {
+            "agent": "dietary",
+            "confidence": 0.0,
+            "task": task,
+            "preferences": {
+                "dietary": final_dietary,
+                "cuisine": final_cuisine,
+            },
+            "candidates": [],
+            "limitations": limitations,
+        }
 
     if final_dietary:
         try:
@@ -232,17 +267,19 @@ def run(
         confidence = 0.9 if suitable else 0.6
     elif final_cuisine:
         confidence = 0.9 if scored_stalls else 0.5
+        suitable = list(scored_stalls)
     else:
         confidence = 0.6 if scored_stalls else 0.3
-    if inferred_diets:
-        limitations.append(
-            "Dietary suitability is inferred from stall name and category heuristics "
-            "(Malay/Muslim -> halal; Yong Tau Foo/vegetables -> healthy; "
-            "fried items/desserts -> unhealthy), not from structured certification data."
-        )
+        suitable = list(scored_stalls)
     if candidate_centres and not stalls and not final_dietary:
         limitations.append(
             "No menu items matched the selected centres and dish or cuisine preferences."
+        )
+    if final_dietary and not suitable:
+        limitations.append(
+            f"No menu items matched the requested dietary preference(s): "
+            f"{', '.join(final_dietary)}. Dietary suitability cannot be verified "
+            "from the available menu data."
         )
     return {
         "agent": "dietary",
@@ -252,6 +289,6 @@ def run(
             "dietary": final_dietary,
             "cuisine": final_cuisine,
         },
-        "candidates": scored_stalls,
+        "candidates": suitable,
         "limitations": limitations,
     }

@@ -1,4 +1,12 @@
-"""Build reproducible synthetic queue records from the local mock catalogue."""
+"""Build reproducible synthetic queue records from the local mock catalogue.
+
+The queue values are simulated. They are derived from a stable hash of the
+stall ID so the same stall always shows the same estimate, which keeps the
+assistant honest about repeating itself. A live signal from LTA DataMall may
+be added as area context when an account key is configured, but it never
+replaces the simulated estimate and is never presented as an observation of
+the stall.
+"""
 
 import hashlib
 import json
@@ -8,12 +16,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, List, Optional
 
+from services import lta_datamall
+
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 CENTRES_FILE = DATA_DIR / "hawker_centres.json"
 STALLS_FILE = DATA_DIR / "hawker_stall.json"
 MOCK_STALLS_FILE = DATA_DIR / "hawker_stall_mock.json"
-QUEUE_SOURCE = "synthetic_queue_mock"
+QUEUE_SOURCE = "simulated_queue_estimate"
 QUEUE_NOTICE = (
     "Simulated queue and crowd estimate generated from a stable stall ID; "
     "not a live or observed queue."
@@ -75,6 +85,69 @@ def _region_for_centre(centre: dict[str, Any]) -> str:
     )
 
 
+@lru_cache(maxsize=1)
+def _mrt_station_names() -> tuple[str, ...]:
+    path = Path(__file__).resolve().parents[1] / "data" / "mrt_stations.json"
+    if not path.exists():
+        return ()
+    names = json.loads(path.read_text(encoding="utf-8"))
+    return tuple(str(name) for name in names)
+
+
+@lru_cache(maxsize=1)
+def _station_codes() -> dict[str, str]:
+    """Return the DataMall station codes, when the service is reachable."""
+    if not lta_datamall.is_enabled():
+        return {}
+    stations = lta_datamall.get_train_stations() or []
+    return {
+        str(station.get("station_name") or "").strip().casefold():
+        str(station.get("station_code") or "").strip()
+        for station in stations
+        if station.get("station_name") and station.get("station_code")
+    }
+
+
+def _live_station_context(centre: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Return the live crowd context of the station near a centre.
+
+    The context is area information from LTA DataMall. It says nothing about
+    the queue at a stall, so it is kept apart from the queue estimate.
+    """
+    if not lta_datamall.is_enabled():
+        return None
+    codes = _station_codes()
+    if not codes:
+        return None
+    text = _normalise(" ".join(
+        str(centre.get(key) or "")
+        for key in ("name", "official_name", "address", "street_name")
+    ))
+    if not text:
+        return None
+    matches = [
+        code for name, code in codes.items()
+        if len(name) >= 4 and f" {name} " in f" {text} "
+    ]
+    if len(matches) != 1:
+        return None
+    crowd = lta_datamall.get_station_crowd_density(matches[0])
+    if not crowd:
+        return None
+    return {
+        "station_code": crowd.get("station_code"),
+        "crowd_density": crowd.get("crowd_density"),
+        "crowd_density_label": crowd.get("crowd_density_label"),
+        "source": lta_datamall.SOURCE_NAME,
+        "source_key": lta_datamall.SOURCE_KEY,
+        "is_live": True,
+        "note": (
+            "Live station crowd density for the area. It is not a queue "
+            "measurement for this stall."
+        ),
+    }
+
+
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     lat1, lng1, lat2, lng2 = map(math.radians, (lat1, lng1, lat2, lng2))
     dlat, dlng = lat2 - lat1, lng2 - lng1
@@ -89,7 +162,6 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 def _all_mock_queue_records() -> tuple[dict[str, Any], ...]:
     centres = json.loads(CENTRES_FILE.read_text(encoding="utf-8"))
     stalls_payload = json.loads(STALLS_FILE.read_text(encoding="utf-8"))
-    mock_payload = json.loads(MOCK_STALLS_FILE.read_text(encoding="utf-8"))
     centres_by_id = {centre["id"]: centre for centre in centres}
     records = []
 
@@ -98,18 +170,27 @@ def _all_mock_queue_records() -> tuple[dict[str, Any], ...]:
         for stall in stalls_payload.get("stalls", [])
         if stall.get("stall_id")
     }
-    stalls_by_id.update({
-        stall.get("stall_id"): stall
-        for stall in mock_payload.get("stalls", [])
-        if stall.get("stall_id")
-    })
 
     for stall in stalls_by_id.values():
-        centre = centres_by_id.get(stall.get("hawker_centre_id"))
+        centre_id = stall.get("hawker_centre_id")
+        centre = centres_by_id.get(centre_id) if centre_id else None
         stall_id = stall.get("stall_id")
         stall_name = str(stall.get("name") or "").strip()
         if not centre or not stall_id or not stall_name:
-            continue
+            # Fall back to matching by hawker_centre text name against
+            # catalogue centre names (e.g. Wak-Wak stalls with no
+            # hawker_centre_id linking them to the NEA catalogue).
+            wanted_name = _normalise(stall.get("hawker_centre") or "")
+            if wanted_name:
+                for c in centres_by_id.values():
+                    if _normalise(c.get("name")) == wanted_name or _normalise(
+                        c.get("official_name", "")
+                    ) == wanted_name:
+                        centre = c
+                        centre_id = c["id"]
+                        break
+            if not centre:
+                continue
 
         base_wait, serving_time = _queue_values(stall_id)
         queue_score = max(
@@ -117,6 +198,7 @@ def _all_mock_queue_records() -> tuple[dict[str, Any], ...]:
             min(100, round(100 - (base_wait * 3) - (serving_time * 2))),
         )
         crowd = _crowd_level(base_wait)
+        live_context = _live_station_context(centre)
         records.append({
             "stall_id": stall_id,
             "stall_name": stall_name,
@@ -135,8 +217,9 @@ def _all_mock_queue_records() -> tuple[dict[str, Any], ...]:
             "estimated_service_time_minutes": serving_time,
             "queue_score": queue_score,
             "source": QUEUE_SOURCE,
-            "queue_is_mock": True,
-            "queue_mock_notice": QUEUE_NOTICE,
+            "queue_is_simulated": True,
+            "queue_estimate_notice": QUEUE_NOTICE,
+            "live_area_context": live_context,
             "is_mock": bool(stall.get("is_mock", False)),
             "data_origin": stall.get(
                 "data_origin",

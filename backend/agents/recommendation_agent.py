@@ -1,9 +1,40 @@
 import json
 import os
+import re
 from typing import Optional
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
+
+
+# A line that names the sources. The model writes it in several shapes, and
+# every one of them has to go, because one provenance line is added for you.
+_SOURCES_LABEL = re.compile(
+    r"^\s*(?:[*_#>•\-]\s*)*sources?\b\s*[:\-]", re.IGNORECASE
+)
+# The items that follow such a label, for example "- NEA Hawker Centres (as of
+# 2026-07-23)".
+_SOURCES_ITEM = re.compile(
+    r"^\s*(?:[-*•]\s*)?\S.*\(as of [^)]+\)\s*$", re.IGNORECASE
+)
+
+
+def _strip_sources_line(text: str) -> str:
+    """Remove any source line the model wrote, so only one is ever present."""
+    kept: list[str] = []
+    in_sources_block = False
+    for line in (text or "").splitlines():
+        if _SOURCES_LABEL.match(line):
+            in_sources_block = True
+            continue
+        if in_sources_block:
+            if not line.strip():
+                continue
+            if _SOURCES_ITEM.match(line):
+                continue
+            in_sources_block = False
+        kept.append(line)
+    return "\n".join(kept).rstrip()
 
 
 def run(
@@ -44,6 +75,10 @@ def run(
                     }
                     for route in location.get("logistics", [])[:8]
                     if isinstance(route, dict)
+                ],
+                "merchant_stalls": [
+                    entry for entry in location.get("merchant_stalls", [])[:5]
+                    if isinstance(entry, dict)
                 ],
                 "limitations": location.get("limitations", []),
             })
@@ -135,11 +170,35 @@ def run(
           closer shortlisted centres had no matching catalogue item, and give the
           route time to each farther match.
         - A centre-level Location result does not establish that a stall is there.
+        - The Location result may carry `merchant_stalls`. Each entry names real
+          stalls of a centre, with their unit numbers, taken from the merchant
+          directory. You may name these stalls and their units. The directory
+          carries no menu, price, dietary, opening or queue data, so never
+          state a dish, price, dietary status or opening time for them, and
+          never present them as a menu match.
+        - When the catalogue holds no menu match for the requested dish but
+          `merchant_stalls` names stalls that do match it, say plainly that the
+          catalogue has no menu data for the centre, then name the matching
+          stalls from the directory with their unit numbers. Do not reply with
+          only a gap statement when a named stall is available.
         - If worker datasets do not agree on the same stall and centre, disclose
           that there is not enough joined evidence to recommend a stall.
         - Do not invent or silently repair menu items or prices.
         - Do not invent queue times.
         - Any halal or dietary suitability claim must be based on verified evidence from the MUIS halal certification database or the HPB Healthier Dining match. If dietary suitability is inferred from stall name or category heuristics, disclose that it is an inference, not a verified fact.
+        - Name the source of a claim when the source matters, using the source fields
+          on the candidate: `halal_source` for a halal certification, `healthier_source`
+          for a Healthier Dining endorsement, `merchant_source` for a merchant listing.
+          Say the claim is certified by the MUIS halal register, endorsed by the HPB
+          Healthier Dining Programme, or listed in the merchant directory. Never claim
+          a certification or an endorsement that the fields do not show.
+        - A candidate with a `crowdsourced_` field holds community-reported
+          information. Label it as community reported, never as verified, and never
+          let it stand in for a catalogue menu, price, cuisine or opening time that
+          the catalogue already holds.
+        - A queue value is a simulated estimate. Say it is an estimate and never
+          present it as an observed or live queue.
+        - The closing Sources line is added for you. Do not write one yourself.
         - Explain why the recommendation was selected in detail. How you arrived at the recommendation is more important than the recommendation itself. Include the following in your rationale:
         - any fairness trade-offs between dietary suitability, price, queue length, walking distance, and weather conditions;
         - any limitations of the source data, including missing or unverified dietary suitability, price,
@@ -173,4 +232,5 @@ def run(
         }
     )
 
-    return result.content
+    reply = _strip_sources_line(result.content)
+    return reply

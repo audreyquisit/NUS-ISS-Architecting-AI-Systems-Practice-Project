@@ -4,7 +4,7 @@ from typing import Any
 
 from services.location_service import load_hawker_centres
 from services.hawker_service import (
-    VERIFIABLE_DIETS, INFERRED_DIETS, _normalise, get_menu_item_record, get_menu_stall_record,
+    VERIFIABLE_DIETS, _normalise, get_menu_item_record, get_menu_stall_record,
 )
 
 
@@ -67,6 +67,43 @@ def _verified_location(result: dict[str, Any]) -> dict[str, Any]:
         if item["centre_id"] in selected_ids
     ]
     checked = {**payload, "selected_centres": selected, "logistics": logistics}
+    merchant_entries = payload.get("merchant_stalls")
+    if isinstance(merchant_entries, list):
+        # Re-derive the merchant list from the centre record, so a worker
+        # cannot name a stall the directory does not list.
+        rebuilt = []
+        for entry in merchant_entries:
+            if not isinstance(entry, dict):
+                continue
+            centre = centres.get(entry.get("centre_id"))
+            if not centre:
+                continue
+            source_merchants = centre.get("merchant_stalls") or []
+            wanted = {
+                (item.get("name"), item.get("unit_number"))
+                for item in entry.get("merchants", [])
+                if isinstance(item, dict)
+            }
+            merchants = [
+                {
+                    "name": merchant.get("name"),
+                    "unit_number": merchant.get("unit_number"),
+                }
+                for merchant in source_merchants
+                if (merchant.get("name"), merchant.get("unit_number")) in wanted
+            ]
+            if not merchants:
+                continue
+            rebuilt.append({
+                "centre_id": centre["id"],
+                "centre_name": centre["name"],
+                "merchants": merchants,
+                "merchant_count": entry.get("merchant_count"),
+                "source": centre.get("merchant_source"),
+                "as_of": centre.get("merchant_as_of"),
+                "note": entry.get("note"),
+            })
+        checked["merchant_stalls"] = rebuilt
     expansion = payload.get("search_expansion")
     if isinstance(expansion, dict):
         expansion = dict(expansion)
@@ -137,10 +174,10 @@ def _verify_queue_candidates(
             not source
             or not source.get("hawker_centre_id")
             or candidate.get("hawker_centre_id") != source.get("hawker_centre_id")
-            or candidate.get("queue_is_mock") is not True
-            or candidate.get("source") != "synthetic_queue_mock"
-            or not isinstance(candidate.get("queue_mock_notice"), str)
-            or "not a live" not in candidate["queue_mock_notice"].casefold()
+            or candidate.get("queue_is_simulated") is not True
+            or candidate.get("source") != "simulated_queue_estimate"
+            or not isinstance(candidate.get("queue_estimate_notice"), str)
+            or "not a live" not in candidate["queue_estimate_notice"].casefold()
             or isinstance(wait, bool)
             or not isinstance(wait, int)
             or wait < 0
@@ -254,17 +291,11 @@ def _verify_worker_result(
         cuisines = [value.casefold() for value in request.get("cuisine_preferences", [])]
         # Verifiable restrictions (vegetarian, vegan, gluten-free, etc.) require
         # structured data the source lacks, so they short-circuit to empty.
-        # Inferred heuristics (halal, healthy, unhealthy) are matched against
-        # each item's inferred dietary_tags.
-        verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS and d not in INFERRED_DIETS]
-        inferred_diets = [d for d in diets if d in INFERRED_DIETS]
+        # Inferred heuristics (halal, healthy, unhealthy) are not matched
+        # against catalogue entries — they are not certification data.
+        verifiable_diets = [d for d in diets if d in VERIFIABLE_DIETS]
         if verifiable_diets:
             candidates = []
-        if inferred_diets:
-            candidates = [
-                item for item in candidates
-                if any(d in item.get("dietary_tags", []) for d in inferred_diets)
-            ]
         if cuisines:
             candidates = [
                 item for item in candidates

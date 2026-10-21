@@ -969,6 +969,7 @@ def run(value: Any) -> Dict[str, Any]:
                 "bukit_timah": {
                     "adam_road_food_centre",
                     "bukit_timah_interim_hawker_centre_and_market",
+                    "bukit_timah_market_and_food_centre",
                 },
             }
             predicate = filters.get(region)

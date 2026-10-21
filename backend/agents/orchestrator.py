@@ -18,6 +18,9 @@ from models.orchestration import (
     ParsedRequest,
     PlannedTask,
 )
+from services.sources_registry import (
+    collect_evidence_sources, format_sources_line,
+)
 
 
 class SharedState(TypedDict, total=False):
@@ -341,8 +344,9 @@ def _current_turn_supports_food_action(message: str, context: dict) -> bool:
         r"\b(?:food|hawker|meal|eat|dish|stall|menu|recommend(?:ation)?s?|"
         r"chicken\s+rice|wanton\s+mee|noodles?|prata|laksa|rice|soup|"
         r"restaurant|eatery|cafe|vegetarian|vegan|halal|gluten[- ]free|"
-        r"allergen|queue|crowd|weather|rain|outdoor|"
-        r"wait\s*time|budget|price|cheap|cheaper|affordable|under\s+\$?|"
+        r"allergen|cake|dessert|kueh|pastry|bun|toast|drink|beverage|"
+        r"coffee|tea|milo|ice\s+cream|juice|queue|crowd|weather|rain|"
+        r"outdoor|wait\s*time|budget|price|cheap|cheaper|affordable|under\s+\$?|"
         r"below\s+\$?)\b|\$\s*\d|\bnear\s+(?:me|here|my\s+"
         r"(?:current\s+)?location)\b",
         message,
@@ -838,8 +842,10 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
     from services.hawker_service import (
         find_dietary_stalls,
         find_stalls_within_budget,
-        INFERRED_DIETS,
+        get_merchant_stalls,
+        VERIFIABLE_DIETS,
     )
+    from agents.dietary_agent import CUISINE_KEYWORDS
 
     routes = [
         item for item in location.get("logistics", [])
@@ -857,11 +863,21 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         item.get("centre_id") for item in initial
         if isinstance(item, dict) and item.get("centre_id")
     }
-    menu_preferences = parsed.get("menu_item_preferences", [])
+    menu_preferences = parsed.get("menu_preferences") or parsed.get("menu_item_preferences", [])
     stall_preferences = parsed.get("stall_name_preferences", [])
     cuisine_preferences = parsed.get("cuisine_preferences", [])
     dietary_preferences = parsed.get("dietary_preferences", [])
     budget = parsed.get("budget_amount")
+
+    # Cuisine-type terms (e.g. "dessert") are sometimes extracted as menu-item
+    # preferences by the planner. Treat them as cuisine preferences so they
+    # match against stall categories instead of menu item names.
+    cuisine_type_menu_prefs = [m for m in menu_preferences if m in CUISINE_KEYWORDS]
+    if cuisine_type_menu_prefs:
+        menu_preferences = [m for m in menu_preferences if m not in CUISINE_KEYWORDS]
+        for pref in cuisine_type_menu_prefs:
+            if pref not in cuisine_preferences:
+                cuisine_preferences.append(pref)
 
     # A broad "what food is available?" request does not need a 24-centre
     # dish search. The menu worker will return entries for the Location
@@ -875,6 +891,20 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             initial_centre_count=len(initial),
         )
         return {}
+
+    # Non-verifiable dietary preferences (halal, healthy, unhealthy) require
+    # certification or ingredient data the menu source lacks. Clear the centre
+    # shortlist so no workers dispatch and no unverified food candidates are
+    # returned to the recommendation agent.
+    non_verifiable = [d for d in dietary_preferences if d not in VERIFIABLE_DIETS]
+    if non_verifiable:
+        location["selected_centres"] = []
+        log_activity(
+            request_id, "menu_search.skipped",
+            reason="non_verifiable_dietary_preference",
+            dietary_preferences=dietary_preferences,
+        )
+        return {"location_result": location}
 
     text = " ".join([
         state.get("user_request", "").casefold(),
@@ -970,11 +1000,9 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
 
     if dietary_preferences:
         # Only verifiable restrictions (which need structured ingredient/allergen
-        # data the source lacks) short-circuit the search. Inferred heuristics
-        # (halal, healthy, unhealthy) are matched against the catalogue's
-        # inferred dietary_tags in the normal menu search below.
+        # data the source lacks) short-circuit the search.
         verifiable = [
-            d for d in dietary_preferences if d not in INFERRED_DIETS]
+            d for d in dietary_preferences if d in VERIFIABLE_DIETS]
         if verifiable:
             location["selected_centres"] = [
                 selected for selected in initial
@@ -1129,6 +1157,20 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
     final_centre_ids = [
         route.get("centre_id") for route, _ in selected_to_use
     ]
+    # The merchant directory names the real stalls of a centre the menu
+    # catalogue does not cover. It carries no menu or price, so it is offered
+    # as a named shortlist and never as a menu match.
+    merchant_entries = get_merchant_stalls(
+        final_centre_ids,
+        terms=list(menu_preferences) + list(stall_preferences),
+    )
+    if merchant_entries:
+        location["merchant_stalls"] = merchant_entries
+        if not selected_matches:
+            location.setdefault("limitations", []).append(
+                "The stall names below come from the merchant directory, which "
+                "lists no menus or prices."
+            )
     matched_counts_by_centre = {
         route.get("centre_id"): len(items)
         for route, items in selected_matches
@@ -1171,6 +1213,7 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
 
 def dispatch_workers(state: SharedState):
     from services.activity_log import log_activity
+    from services.hawker_service import VERIFIABLE_DIETS
 
     if state.get("needs_location"):
         log_activity(
@@ -1189,6 +1232,23 @@ def dispatch_workers(state: SharedState):
         return "verify_results"
     tasks = [task for task in state.get(
         "tasks", []) if task.agent != "location"]
+
+    # Non-verifiable dietary preferences (halal, healthy, unhealthy) require
+    # certification or ingredient data the menu source lacks. The dietary
+    # worker must run so it returns zero verified candidates (forcing the
+    # candidate-join intersection to be empty). The budget worker must be
+    # skipped so it doesn't produce candidates on its own.
+    parsed = state.get("parsed_request", {})
+    dietary_preferences = parsed.get("dietary_preferences", [])
+    non_verifiable = [d for d in dietary_preferences if d not in VERIFIABLE_DIETS]
+    if non_verifiable:
+        tasks = [task for task in tasks if task.agent != "budget"]
+        log_activity(
+            state.get("request_id"), "workers.skipped",
+            reason="non_verifiable_dietary_preference",
+            dietary_preferences=dietary_preferences,
+        )
+
     if not tasks:
         log_activity(
             state.get("request_id"), "workers.skipped",
@@ -1245,7 +1305,7 @@ def worker(state: WorkerState) -> dict[str, Any]:
             user_request=state.get("user_request"),
             dietary_preferences=parsed.get("dietary_preferences", []),
             cuisine_preferences=parsed.get("cuisine_preferences", []),
-            menu_item_preferences=parsed.get("menu_item_preferences", []),
+            menu_item_preferences=parsed.get("menu_preferences") or parsed.get("menu_item_preferences", []),
             stall_name_preferences=parsed.get("stall_name_preferences", []),
             excluded_menu_item_ids=parsed.get("excluded_menu_item_ids", []),
             candidate_centres=centre_names,
@@ -1459,7 +1519,21 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
             f"{index}. {name}",
             f"   - Average estimated wait: about {average_wait} minutes across {len(rows)} stalls.",
             f"   - Most common crowd level: {most_common_crowd}.",
+            f"   - Shortest queue stalls:",
         ])
+        sorted_rows = sorted(
+            rows,
+            key=lambda item: int(item.get("queue_minutes") or 999),
+        )
+        for item in sorted_rows[:5]:
+            stall_name = item.get("stall_name", "Unknown stall")
+            q_min = int(item.get("queue_minutes") or 0)
+            crowd = item.get("crowd_level") or "Unspecified"
+            unit = item.get("unit_number") or ""
+            stall_label = f"{stall_name}" + (f" ({unit})" if unit else "")
+            summary_lines.append(
+                f"      • {stall_label}: about {q_min} minutes, {crowd} crowd."
+            )
     return "\n".join(summary_lines)
 
 
@@ -1525,13 +1599,22 @@ def synthesizer(state: SharedState) -> dict[str, str]:
 
     def disclose_origin(reply: str) -> str:
         origin_label = location.get("origin_label")
-        if not origin_label or not location.get("selected_centres"):
+        if origin_label and location.get("selected_centres"):
+            reply = (
+                f"Starting point used: {origin_label}. Walking distance and time "
+                "refer to the walking portions of each listed route.\n\n"
+                f"{reply}"
+            )
+        return with_sources(reply)
+
+    source_keys, source_dates = collect_evidence_sources(verified)
+    sources_line = format_sources_line(source_keys, source_dates)
+
+    def with_sources(reply: str) -> str:
+        """Close a reply with the provenance of the evidence behind it."""
+        if not sources_line or not reply:
             return reply
-        return (
-            f"Starting point used: {origin_label}. Walking distance and time "
-            "refer to the walking portions of each listed route.\n\n"
-            f"{reply}"
-        )
+        return f"{reply.rstrip()}\n\n{sources_line}"
 
     interpretation = location.get("intent_interpretation", {})
     if (
@@ -1547,7 +1630,7 @@ def synthesizer(state: SharedState) -> dict[str, str]:
             f" If you want, I can search for nearby centres around {prior_origin}."
             if prior_origin else ""
         )
-        return {"final_recommendation": (
+        return {"final_recommendation": with_sources(
             f"I couldn't verify {target} in the hawker-centre catalogue, so I "
             "can't confirm food options there. I haven't substituted other "
             f"centres for it.{nearby_offer} You can also name another centre."
@@ -1660,7 +1743,7 @@ def synthesizer(state: SharedState) -> dict[str, str]:
 
             if outcome == "dietary_verification_unavailable":
                 return {
-                    "final_recommendation": (
+                    "final_recommendation": with_sources(
                         "I can't verify that dietary restriction from this menu data: "
                         "it has no ingredient, allergen, or certification details. "
                         "Would you like to see menu options with that limitation made "

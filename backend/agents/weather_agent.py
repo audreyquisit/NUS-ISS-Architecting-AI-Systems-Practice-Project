@@ -8,16 +8,19 @@ def run(
     parsed_request: Optional[dict] = None,
     candidate_centres: Optional[list[str]] = None,
 ):
-
     requested_area = (parsed_request or {}).get("requested_area")
     centres = candidate_centres or []
     weather = get_weather(area=requested_area, centres=centres)
 
-    confidence = 0.0
-    if isinstance(weather, dict) and weather.get("mock") is not True:
-        confidence = 0.8
-    elif isinstance(weather, dict) and weather.get("mock") is True:
+    limitations = list(weather.get("limitations") or [])
+    if weather.get("condition") == "unavailable":
         confidence = 0.0
+        limitations.append(
+            "The NEA weather forecast could not be read, so no forecast is "
+            "shown."
+        )
+    else:
+        confidence = 0.8
 
     return {
         "agent": "weather",
@@ -25,5 +28,5 @@ def run(
         "task": task,
         "weather": weather,
         "candidate_centres": centres,
-        "limitations": ["Weather service currently returns mock data."] if confidence == 0.0 else [],
+        "limitations": limitations,
     }

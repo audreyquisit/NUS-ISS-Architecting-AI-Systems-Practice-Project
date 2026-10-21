@@ -107,7 +107,7 @@ class QueueAgentTests(unittest.TestCase):
             item.get("tool") == "apply_queue_limit" for item in trace
         ))
         self.assertTrue(all(
-            item.get("source") == "synthetic_queue_mock" for item in candidates
+            item.get("source") == "simulated_queue_estimate" for item in candidates
         ))
 
     @patch("agents.queue_agent.get_menu_stall_id", return_value="stall-id")
@@ -122,7 +122,7 @@ class QueueAgentTests(unittest.TestCase):
             item["_agent_candidate_id"] = f"queue-{index}"
             item["hawker_centre_id"] = "maxwell-id"
             item["stall_id"] = "stall-id"
-            item["source"] = "mock_queue_feed"
+            item["source"] = "simulated_queue_estimate"
         _agentic_plan.return_value = (candidates, [])
         rank_candidates.return_value = QueueAssessment(
             ranked_candidates=[
@@ -159,7 +159,7 @@ class QueueAgentTests(unittest.TestCase):
             [item.get("_agent_candidate_id") for item in result["candidates"]],
         )
         self.assertTrue(
-            any("mock lookup" in item for item in result["limitations"])
+            any("simulated" in item for item in result["limitations"])
         )
 
     @patch("agents.queue_agent.get_menu_stall_id", return_value="stall-id")

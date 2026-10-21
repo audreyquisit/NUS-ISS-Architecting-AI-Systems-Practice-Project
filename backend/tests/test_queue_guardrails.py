@@ -9,8 +9,8 @@ def _candidate(
     centre_id="centre-a",
     queue_minutes=8,
     crowd_level="Moderate",
-    source="synthetic_queue_mock",
-    queue_is_mock=True,
+    source="simulated_queue_estimate",
+    queue_is_simulated=True,
 ):
     return {
         "stall_id": stall_id,
@@ -20,8 +20,8 @@ def _candidate(
         "queue_minutes": queue_minutes,
         "crowd_level": crowd_level,
         "queue_score": 72,
-        "queue_is_mock": queue_is_mock,
-        "queue_mock_notice": "Simulated queue estimate; not a live queue.",
+        "queue_is_simulated": queue_is_simulated,
+        "queue_estimate_notice": "Simulated queue estimate; not a live queue.",
         "source": source,
     }
 
@@ -71,7 +71,7 @@ class QueueGuardrailTests(unittest.TestCase):
             ],
         }
         result["candidates"][1]["hawker_centre_id"] = "centre-a"
-        result["candidates"][3]["queue_is_mock"] = False
+        result["candidates"][3]["queue_is_simulated"] = False
 
         checked = _verify_worker_result(result, {"max_queue_min": 10})
 
