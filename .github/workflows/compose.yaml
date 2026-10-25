@@ -35,8 +35,8 @@ jobs:
                   -p 80:5000 \
                   --restart unless-stopped \
                   -e BACKEND_URL=http://hawker-backend:8000 \
-                  -e ENABLE_TRACE_VIEWER=false \
-                  -e TRACE_VIEWER_ALLOW_REMOTE=false \
+                  -e ENABLE_TRACE_VIEWER=true \
+                  -e TRACE_VIEWER_ALLOW_REMOTE=true \
                   ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
             - name: Start backend container
