@@ -395,8 +395,10 @@ def _collect_logistics(
     # irrelevant parts of Singapore. They are never returned as travel
     # distance or used as a substitute for OneMap route evidence.
     parsed_request = query.parsed_request or {}
+    # Structured scope is authoritative; place names may contain compass words.
     requested_area = (
-        parsed_request.get("requested_area") or _requested_area(query.request)
+        parsed_request.get("requested_area")
+        if parsed_request else _requested_area(query.request)
     )
     area_anchors = {
         # Approximate geographic anchors, used only to select a broad candidate
