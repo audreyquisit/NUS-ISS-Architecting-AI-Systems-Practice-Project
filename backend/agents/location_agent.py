@@ -7,9 +7,17 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Literal, Optional
 
+from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+from openai import (
+    APIConnectionError,
+    APIResponseValidationError,
+    InternalServerError,
+    LengthFinishReasonError,
+    RateLimitError,
+)
+from pydantic import BaseModel, Field, ValidationError
 
 from models.location_models import (
     CentreLogistics,
@@ -615,6 +623,95 @@ def _shortlist_for_reasoning(
     return shortlist
 
 
+def _deterministic_ranking(
+    query: LocationQuery,
+    intent: LocationIntent,
+    shortlist: List[CentreLogistics],
+    reason: str,
+) -> CentreRanking:
+    """Rank an already verified, time-eligible shortlist without model output.
+
+    Supported structured priorities are lexicographic in declared order, then
+    duration and centre ID. Unknown metrics sort last, never as zero. Confidence
+    and logistics fit are conservative policy values, not calibrated scores.
+    """
+    aliases = {
+        "fastest": "total_duration_min",
+        "quickest": "total_duration_min",
+        "shortest duration": "total_duration_min",
+        "shortest travel time": "total_duration_min",
+        "least walking": "walking_distance_m",
+        "less walking": "walking_distance_m",
+        "minimum walking": "walking_distance_m",
+        "avoid long walks": "walking_distance_m",
+        "fewest transfers": "transfers",
+        "fewer transfers": "transfers",
+        "few transfers": "transfers",
+        "avoid transfers": "transfers",
+        "no transfers": "transfers",
+    }
+    labels = {
+        "total_duration_min": "shortest travel duration",
+        "walking_distance_m": "least measured walking distance",
+        "transfers": "fewest measured transfers",
+    }
+    priorities = query.priorities
+    if not priorities:
+        if query.parsed_request:
+            priorities = query.parsed_request.get("priorities") or []
+        else:
+            priorities = intent.inferred_priorities or [intent.proximity_preference]
+    if not isinstance(priorities, list) or any(not isinstance(value, str) for value in priorities):
+        raise ValueError("Travel priorities must be a list of strings.")
+    metrics = []
+    limitations = [
+        f"LLM ranking was unavailable or unusable ({reason}); deterministic fallback was used."
+    ]
+    for priority in priorities:
+        normalized = " ".join(re.sub(r"[_-]+", " ", priority.casefold()).split())
+        if normalized in {"", "convenient", "flexible", "nearby"}:
+            continue
+        metric = aliases.get(normalized)
+        if metric is None:
+            note = "An unsupported travel priority was ignored by the deterministic fallback."
+        elif not any(
+            getattr(item.travel, metric) is not None
+            and math.isfinite(getattr(item.travel, metric))
+            for item in shortlist
+        ):
+            note = f"Evidence for {labels[metric]} is unavailable; this priority was not applied."
+        else:
+            if metric not in metrics:
+                metrics.append(metric)
+            continue
+        if note not in limitations:
+            limitations.append(note)
+    if "total_duration_min" not in metrics:
+        metrics.append("total_duration_min")
+
+    def key(item: CentreLogistics):
+        return tuple(
+            getattr(item.travel, metric)
+            if getattr(item.travel, metric) is not None
+            and math.isfinite(getattr(item.travel, metric)) else math.inf
+            for metric in metrics
+        ) + (item.centre_id,)
+
+    policy = ", then ".join(labels[metric] for metric in metrics)
+    return CentreRanking(
+        selected_centres=[RankedCentre(
+            centre_id=item.centre_id, rank=index, logistics_fit=0.5,
+            rationale=(
+                f"Deterministic fallback ordered by {policy}; "
+                f"OneMap travel duration is {item.travel.total_duration_min} min."
+            ),
+        ) for index, item in enumerate(sorted(shortlist, key=key)[:3], start=1)],
+        reasoning=f"Deterministic fallback ({reason}): ranked verified shortlisted routes by {policy}.",
+        confidence=0.5,
+        limitations=limitations,
+    )
+
+
 def _rank_centres(
     query: LocationQuery,
     intent: LocationIntent,
@@ -658,7 +755,9 @@ def _rank_centres(
                 "A missing route duration cannot pass the travel-time limit."
             ],
         )
-    shortlist = _shortlist_for_reasoning(query, intent, eligible)
+    shortlist = _shortlist_for_reasoning(
+        query, intent, [item for item in eligible if item.travel.source == "onemap"]
+    )
     if not shortlist:
         log_activity(
             request_id, "location.centre_ranking.skipped",
@@ -687,7 +786,16 @@ def _rank_centres(
         chain = RANK_PROMPT | llm.with_structured_output(
             CentreRanking, method="function_calling"
         )
-        result: CentreRanking = chain.invoke({
+    except Exception as error:
+        # Configuration/setup failures are not model-output failures.
+        log_activity(
+            request_id, "location.centre_ranking.failed",
+            model=model_name, error_type=type(error).__name__, llm_called=True,
+        )
+        raise
+    fallback_reason = None
+    try:
+        result = chain.invoke({
             "request": query.request,
             "intent": {
                 **intent.model_dump(),
@@ -720,6 +828,22 @@ def _rank_centres(
                 for item in shortlist
             ], ensure_ascii=False),
         })
+        # Structured-output parsers may return None; also validate mapping
+        # outputs and revalidate models before trusting ranks/confidence.
+        result = CentreRanking.model_validate(
+            result.model_dump() if isinstance(result, CentreRanking) else result
+        )
+    except (
+        APIConnectionError, APIResponseValidationError, InternalServerError,
+        RateLimitError, LengthFinishReasonError, TimeoutError, ConnectionError,
+        OutputParserException, json.JSONDecodeError, ValidationError,
+    ) as error:
+        fallback_reason = type(error).__name__
+        log_activity(
+            request_id, "location.centre_ranking.failed",
+            model=model_name, error_type=fallback_reason, llm_called=True,
+        )
+        result = _deterministic_ranking(query, intent, shortlist, fallback_reason)
     except Exception as error:
         log_activity(
             request_id, "location.centre_ranking.failed",
@@ -738,21 +862,23 @@ def _rank_centres(
         seen.add(selection.centre_id)
         unique.append(selection.model_copy(update={"rank": len(unique) + 1}))
     if not unique:
-        fastest = min(shortlist, key=lambda item: item.travel.total_duration_min)
-        unique = [RankedCentre(
-            centre_id=fastest.centre_id,
-            rank=1,
-            logistics_fit=0.5,
-            rationale="Fastest verified fallback among the shortlisted route candidates.",
-        )]
-        result.limitations.append(
-            "The model returned no valid centre IDs; a verified fallback was used."
-        )
+        fallback_reason = "no_valid_model_selections"
+        result = _deterministic_ranking(query, intent, shortlist, fallback_reason)
+        unique = result.selected_centres
+    elif len(unique) != len(result.selected_centres):
+        result = result.model_copy(update={"limitations": [
+            *result.limitations,
+            "Invalid or duplicate centre selections were removed from the model ranking.",
+        ]})
+    completion_details = ({
+        "ranking_source": "deterministic_fallback", "fallback_reason": fallback_reason,
+    } if fallback_reason else {})
     log_activity(
         request_id, "location.centre_ranking.completed",
         model=model_name,
         selected_centres=len(unique[:3]),
         llm_called=True,
+        **completion_details,
     )
     return result.model_copy(update={"selected_centres": unique[:3]})
 
