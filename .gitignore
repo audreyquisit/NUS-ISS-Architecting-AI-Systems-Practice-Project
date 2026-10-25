@@ -11,4 +11,6 @@ __pycache__/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/traces/
+backend/sessions/
 backend/test-results/
+frontend/.env

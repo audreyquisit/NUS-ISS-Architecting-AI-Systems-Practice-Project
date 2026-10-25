@@ -157,6 +157,8 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
             docker network create hawker-net || true
+            docker volume create hawker-sessions || true
+            docker volume create hawker-traces || true
 
   
             docker stop hawker-backend || true
@@ -167,6 +169,8 @@ jobs:
             docker run -d \
               --name hawker-backend \
               --network hawker-net \
+              -v hawker-sessions:/app/sessions \
+              -v hawker-traces:/app/traces \
               -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
               -e ONEMAP_EMAIL="${{ secrets.ONEMAP_EMAIL }}" \
               -e ONEMAP_EMAIL_PASSWORD="${{ secrets.ONEMAP_EMAIL_PASSWORD }}" \
@@ -183,6 +187,8 @@ jobs:
               --name hawker-frontend \
               --network hawker-net \
               -e BACKEND_URL=http://hawker-backend:8000 \
+              -e ENABLE_TRACE_VIEWER=false \
+              -e TRACE_VIEWER_ALLOW_REMOTE=false \
               --log-driver=awslogs \
               --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
               --log-opt awslogs-group=/smart-hawker/frontend \

@@ -19,18 +19,36 @@ jobs:
                   username: ${{ secrets.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_TOKEN }}
 
+            - name: Create docker network
+              run: docker network create hawker-net || true
+
+            - name: Create data volumes
+              run: |
+                docker volume create hawker-sessions || true
+                docker volume create hawker-traces || true
+
             - name: Start frontend container
               run: |
-                  docker run -d \
-                    --name hawker-frontend \
-                    -p 80:3000 \
-                    --restart unless-stopped \
-                    ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
+                docker run -d \
+                  --name hawker-frontend \
+                  --network hawker-net \
+                  -p 80:5000 \
+                  --restart unless-stopped \
+                  -e BACKEND_URL=http://hawker-backend:8000 \
+                  -e ENABLE_TRACE_VIEWER=false \
+                  -e TRACE_VIEWER_ALLOW_REMOTE=false \
+                  ${{ secrets.DOCKER_USERNAME }}/hawker-frontend:latest
 
             - name: Start backend container
               run: |
-                  docker run -d \
-                    --name hawker-backend \
-                    --expose 5000 \
-                    --restart unless-stopped \
-                    ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
+                docker run -d \
+                  --name hawker-backend \
+                  --network hawker-net \
+                  --expose 8000 \
+                  -v hawker-sessions:/app/sessions \
+                  -v hawker-traces:/app/traces \
+                  --restart unless-stopped \
+                  -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                  -e ONEMAP_EMAIL="${{ secrets.ONEMAP_EMAIL }}" \
+                  -e ONEMAP_EMAIL_PASSWORD="${{ secrets.ONEMAP_EMAIL_PASSWORD }}" \
+                  ${{ secrets.DOCKER_USERNAME }}/hawker-backend:latest
