@@ -575,38 +575,44 @@ def _shortlist_for_reasoning(
     logistics: List[CentreLogistics],
     limit: int = 8,
 ) -> List[CentreLogistics]:
-    """Send only the strongest route candidates to the ranking LLM."""
-    text = " ".join([
-        query.request.casefold(),
-        " ".join(query.priorities).casefold(),
-        " ".join(intent.inferred_priorities).casefold(),
-        intent.proximity_preference.casefold(),
-    ])
-    wants_least_walking = any(term in text for term in (
-        "walk", "walking", "avoid long walks", "less walking",
-    ))
-    wants_fewer_transfers = any(term in text for term in (
-        "transfer", "few transfers", "no transfers",
-    ))
-    routed = [item for item in logistics if item.travel.total_duration_min is not None]
-    if wants_least_walking:
-        key = lambda item: (
-            item.travel.walking_distance_m
-            if item.travel.walking_distance_m is not None else math.inf,
-            item.travel.total_duration_min,
-        )
-    elif wants_fewer_transfers:
-        key = lambda item: (
-            item.travel.transfers if item.travel.transfers is not None else math.inf,
-            item.travel.total_duration_min,
-        )
-    else:
-        key = lambda item: (
-            item.travel.total_duration_min,
-            item.travel.walking_distance_m
-            if item.travel.walking_distance_m is not None else math.inf,
-        )
-    return sorted(routed, key=key)[:limit]
+    """Keep bounded duration, walking and transfer trade-offs for ranking."""
+    if limit <= 0:
+        return []
+    # The caller enforces hard constraints before shortlisting. Keep preference
+    # interpretation in the existing ranking call, rather than guessing from
+    # raw words that may negate or contradict the validated intent.
+    routed = sorted(
+        (item for item in logistics if item.travel.total_duration_min is not None),
+        key=lambda item: (item.travel.total_duration_min, item.centre_id),
+    )
+    rankings = [routed]
+    for metric in ("walking_distance_m", "transfers"):
+        measured = [
+            item for item in routed
+            if item.travel.source == "onemap"
+            and getattr(item.travel, metric) is not None
+            and math.isfinite(getattr(item.travel, metric))
+        ]
+        rankings.append(sorted(measured, key=lambda item: (
+            getattr(item.travel, metric), item.travel.total_duration_min, item.centre_id,
+        )))
+
+    # Round-robin the rankings so each available metric contributes its best
+    # candidate before taking runners-up. Missing evidence never becomes zero.
+    shortlist = []
+    seen = set()
+    for position in range(len(routed)):
+        for ranking in rankings:
+            if position >= len(ranking):
+                continue
+            candidate = ranking[position]
+            if candidate.centre_id in seen:
+                continue
+            shortlist.append(candidate)
+            seen.add(candidate.centre_id)
+            if len(shortlist) == limit:
+                return shortlist
+    return shortlist
 
 
 def _rank_centres(
