@@ -187,8 +187,8 @@ jobs:
               --name hawker-frontend \
               --network hawker-net \
               -e BACKEND_URL=http://hawker-backend:8000 \
-              -e ENABLE_TRACE_VIEWER=false \
-              -e TRACE_VIEWER_ALLOW_REMOTE=false \
+              -e ENABLE_TRACE_VIEWER=true \
+              -e TRACE_VIEWER_ALLOW_REMOTE=true \
               --log-driver=awslogs \
               --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
               --log-opt awslogs-group=/smart-hawker/frontend \
