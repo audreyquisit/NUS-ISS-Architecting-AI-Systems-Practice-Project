@@ -1,12 +1,33 @@
 import os
 import ipaddress
 import uuid
+from pathlib import Path
+from dotenv import load_dotenv
 import requests
 from flask import Flask, render_template, request, jsonify
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 app = Flask(__name__)
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+
+
+def _trace_client_allowed(remote_addr: str) -> bool:
+    """Allow loopback clients, and private-network clients when enabled.
+
+    The trace viewer carries operational evidence, so it stays loopback-only
+    unless `TRACE_VIEWER_ALLOW_REMOTE` explicitly opens it to local networks.
+    """
+    try:
+        address = ipaddress.ip_address(remote_addr or "")
+    except ValueError:
+        return False
+    if address.is_loopback:
+        return True
+    if os.getenv("TRACE_VIEWER_ALLOW_REMOTE", "").casefold() != "true":
+        return False
+    return address.is_private or address.is_link_local
 
 
 @app.route("/")
@@ -18,10 +39,7 @@ def home():
 def trace_viewer(request_id):
     if os.getenv("ENABLE_TRACE_VIEWER", "").casefold() != "true":
         return "Not found", 404
-    try:
-        if not ipaddress.ip_address(request.remote_addr or "").is_loopback:
-            return "Not found", 404
-    except ValueError:
+    if not _trace_client_allowed(request.remote_addr or ""):
         return "Not found", 404
     try:
         if str(uuid.UUID(request_id)) != request_id.casefold():
@@ -58,6 +76,7 @@ def chat():
                 "message": user_message,
                 "user_location": payload.get("user_location"),
                 "conversation_context": payload.get("conversation_context", {}),
+                "session_id": payload.get("session_id"),
             },
             timeout=90,
         )

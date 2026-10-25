@@ -58,6 +58,26 @@ request, worker plan, and verified results for tracing. `/api/location` remains 
 direct worker endpoint and performs its own intent interpretation when no parsed
 request is supplied.
 
+### Session storage
+
+`/api/chat` and `/api/recommendation` keep an anonymous conversation per session.
+Send `session_id` in the request body to continue a conversation; the backend
+creates a session when the field is missing or malformed and returns the
+`session_id` in every response, including the `422` response that asks for a
+starting location. The server-stored conversation is canonical once a session
+holds one, so a client that keeps its `session_id` gets the stored turns and
+state back on the next turn. A request without a `session_id` keeps using the
+`conversation_context` supplied by the client.
+
+Sessions live in `backend/sessions/sessions.db` and follow the same conventions
+as the trace store: SQLite in WAL mode, a `sessions` and a `turns` table, and
+`os.chmod` hardening. Sessions are deleted after 30 days
+(`SESSION_RETENTION_DAYS`). Every stored turn and state value is redacted with
+the trace store's rules, and coordinates and street addresses are never written,
+so the stored state only holds the place the user typed, route preferences, the
+centre shortlist, and previously recommended menu items. A storage failure is
+logged and the request continues without persistence.
+
 ### Location & Logistics request
 
 The location endpoint accepts a natural-language request and either a named place
@@ -132,6 +152,9 @@ curl 'http://localhost:8000/api/stalls?limit=2'
 - Trace endpoints require `TRACE_ACCESS_TOKEN`. The frontend trace viewer is
   disabled unless `ENABLE_TRACE_VIEWER=true` and only serves loopback clients;
   configure the same strong random token in the backend and frontend environments.
+  Set `TRACE_VIEWER_ALLOW_REMOTE=true` in the frontend environment to also serve
+  clients on a private network, so the viewer can be opened from a phone or
+  another machine on the same LAN. Public addresses stay blocked.
   Trace files retain only operational summaries, omit messages and coordinates,
   and expire after 30 days by default (`TRACE_RETENTION_DAYS` can be set from 1 to
   365). Do not enable the viewer on an internet-facing deployment.

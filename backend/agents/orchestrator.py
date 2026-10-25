@@ -164,10 +164,11 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
     request.field_sources = {
         key: (
-            (value[0] if isinstance(value, list) else value)
-            .strip().casefold().replace(" ", "_")
-            if (value[0] if isinstance(value, list) else value).strip().casefold().replace(" ", "_") in allowed_sources
-            else "inferred"
+            (lambda raw: raw.strip().casefold().replace(" ", "_")
+             if isinstance(raw, str) and raw.strip().casefold().replace(" ", "_") in allowed_sources
+             else "inferred")(
+                value[0] if isinstance(value, list) and value else value
+            )
         )
         for key, value in request.field_sources.items()
     }
