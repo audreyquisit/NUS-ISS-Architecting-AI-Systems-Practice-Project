@@ -182,6 +182,77 @@ class QueueAgentTests(unittest.TestCase):
         )
         self.assertIn("deterministically", result["reasoning"])
 
+    @patch("agents.queue_agent._rank_candidates", side_effect=RuntimeError("offline"))
+    @patch("agents.queue_agent._agentic_queue_plan")
+    def test_google_places_result_keeps_proxy_provenance(self, agentic_plan, _rank):
+        place = {
+            "_agent_candidate_id": "queue-0",
+            "stall_id": "places/chinatown-complex",
+            "stall_name": "Chinatown Complex",
+            "hawker_centre": "Chinatown Complex",
+            "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+            "queue_minutes": 3,
+            "crowd_level": "Low",
+            "queue_score": 91,
+            "source": "google_places",
+            "data_origin": "google_places",
+            "place_id": "places/chinatown-complex",
+            "queue_is_mock": False,
+            "queue_estimate_type": "popularity_proxy",
+        }
+        agentic_plan.return_value = ([place], [])
+
+        result = run("Check queues for Chinatown Complex")
+
+        self.assertEqual(result["candidates"][0]["source"], "google_places")
+        self.assertEqual(result["candidates"][0]["stall_id"], "places/chinatown-complex")
+        self.assertEqual(result["evidence"][0]["source"], "google_places")
+        self.assertTrue(any(
+            "not observed queues" in item for item in result["limitations"]
+        ))
+
+    @patch("services.google_places_queue_feed.requests.post")
+    @patch.dict(
+        "os.environ",
+        {
+            "QUEUE_FEED_PROVIDER": "google_places",
+            "GOOGLE_PLACES_API_KEY": "test-key",
+        },
+        clear=False,
+    )
+    def test_google_places_queue_provider_maps_place_results(self, mock_post):
+        from services.queue_provider import get_live_queue_feed
+
+        mock_post.return_value.raise_for_status.return_value = None
+        mock_post.return_value.json.return_value = {
+            "places": [
+                {
+                    "id": "places/maxwell-food-centre",
+                    "displayName": {"text": "Maxwell Food Centre"},
+                    "formattedAddress": "1 Kadayanallur St, Singapore 069184",
+                    "rating": 4.7,
+                    "userRatingCount": 150,
+                    "businessStatus": "OPERATIONAL",
+                }
+            ],
+        }
+
+        records = get_live_queue_feed("Maxwell Food Centre")
+
+        self.assertEqual(records[0]["source"], "google_places")
+        self.assertEqual(records[0]["stall_name"], "Maxwell Food Centre")
+        self.assertIn("queue_minutes", records[0])
+        self.assertIn("crowd_level", records[0])
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(
+            args[0],
+            "https://places.googleapis.com/v1/places:searchText",
+        )
+        self.assertEqual(kwargs["headers"]["X-Goog-Api-Key"], "test-key")
+        self.assertIn("places.displayName", kwargs["headers"]["X-Goog-FieldMask"])
+        self.assertEqual(kwargs["json"], {"textQuery": "Maxwell Food Centre"})
+
 
 if __name__ == "__main__":
     unittest.main()

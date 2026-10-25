@@ -156,6 +156,9 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
         "context": json.dumps(context, ensure_ascii=False),
     })
     request, queue_intent = _normalize_queue_intent(plan.request)
+    request = _force_food_request_intent(request, current_message, context)
+    request = _force_queue_request(request, current_message)
+    queue_intent = queue_intent or _requests_queue_data(current_message)
     allowed_sources = {
         "current_message", "conversation_context", "form_input", "inferred"
     }
@@ -340,10 +343,10 @@ def _current_turn_supports_food_action(message: str, context: dict) -> bool:
         r"\b(?:food|hawker|meal|eat|dish|stall|menu|recommend(?:ation)?s?|"
         r"chicken\s+rice|wanton\s+mee|noodles?|prata|laksa|rice|soup|"
         r"restaurant|eatery|cafe|vegetarian|vegan|halal|gluten[- ]free|"
-        r"allergen|queue|crowd|weather|rain|outdoor|"
-        r"wait\s*time|budget|price|cheap|cheaper|affordable|under\s+\$?|"
-        r"below\s+\$?)\b|\$\s*\d|\bnear\s+(?:me|here|my\s+"
-        r"(?:current\s+)?location)\b",
+        r"allergen|queue|queues|crowd|crowds|weather|rain|outdoor|"
+        r"wait(?:ing)?\s*(?:time|times)|waiting\s+times?|"
+        r"budget|price|cheap|cheaper|affordable|under\s+\$?|below\s+\$?)\b|"
+        r"\$\s*\d|\bnear\s+(?:me|here|my\s+(?:current\s+)?location)\b",
         message,
         re.I,
     ):
@@ -500,6 +503,25 @@ def _requests_queue_data(message: str) -> bool:
         message,
         re.IGNORECASE,
     ))
+
+
+def _force_food_request_intent(
+    request: ParsedRequest,
+    message: str,
+    context: Optional[dict] = None,
+) -> ParsedRequest:
+    if request.intent in {"smalltalk", "other"} and _current_turn_supports_food_action(
+        message,
+        context or {},
+    ):
+        return request.model_copy(update={"intent": "food_discovery"})
+    return request
+
+
+def _force_queue_request(request: ParsedRequest, message: str) -> ParsedRequest:
+    if _requests_queue_data(message) and request.intent in {"smalltalk", "other"}:
+        return request.model_copy(update={"intent": "food_discovery"})
+    return request
 
 
 def _explicit_origin_from_message(message: str) -> Optional[str]:
@@ -1362,10 +1384,43 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
         if isinstance(item, dict) and item.get("queue_minutes") is not None
     ]
     if not queue_candidates:
+        evidence = queue_result.get("evidence", [])
+        data_sources = {
+            source
+            for item in evidence if isinstance(item, dict)
+            for source in item.get("data_sources", [])
+        }
+        if "google_places" in data_sources:
+            return (
+                "Google Places does not provide actual queue or wait-time data, "
+                "and it returned no matching centre result. I can't give a reliable "
+                "wait estimate for this request."
+            )
         return (
             "I couldn't find queue estimates for the route-shortlisted centres. "
             "The queue feed is simulated demo data, not a live service."
         )
+
+    google_place_candidates = [
+        item for item in queue_candidates
+        if item.get("source") == "google_places"
+    ]
+    if google_place_candidates:
+        summary_lines = [
+            "Google Places provides live place metadata, not observed queue times.",
+            "These are popularity-based proxies for places, not stall-specific waits:",
+        ]
+        for index, candidate in enumerate(google_place_candidates[:3], start=1):
+            summary_lines.extend([
+                f"{index}. {candidate.get('hawker_centre', 'Hawker centre')}",
+                f"   - Popularity-based proxy: about {int(candidate['queue_minutes'])} minutes; not an observed wait.",
+                f"   - Crowd proxy: {candidate.get('crowd_level') or 'Unspecified'}.",
+            ])
+        if re.search(r"\b(?:stall|ming\s+fa)\b", user_request, re.I):
+            summary_lines.append(
+                "Google Places did not provide stall-specific queue data for the named stall."
+            )
+        return "\n".join(summary_lines)
 
     request_terms = _stall_name_terms(user_request)
     named_stalls = [

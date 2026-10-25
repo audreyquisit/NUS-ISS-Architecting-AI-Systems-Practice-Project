@@ -124,15 +124,51 @@ def _verify_queue_candidates(
         (15, "Moderate"),
         (25, "High"),
     )
+    centres = {item["id"]: item for item in load_hawker_centres()}
     for candidate in candidates:
         if not isinstance(candidate, dict):
             rejected_count += 1
             continue
         stall_id = candidate.get("stall_id")
-        source = get_menu_stall_record(str(stall_id or ""))
         wait = candidate.get("queue_minutes")
         queue_score = candidate.get("queue_score")
         crowd = candidate.get("crowd_level")
+        if candidate.get("source") == "google_places":
+            centre = centres.get(candidate.get("hawker_centre_id"))
+            place_name = str(candidate.get("stall_name") or "")
+            centre_words = set(_normalise(centre["name"]).split()) if centre else set()
+            place_words = set(_normalise(place_name).split())
+            if (
+                not centre
+                or len(centre_words & place_words) < 2
+                or not isinstance(candidate.get("place_id"), str)
+                or not candidate["place_id"].startswith(("places/", "ChI"))
+                or candidate.get("data_origin") != "google_places"
+                or candidate.get("queue_is_mock") is not False
+                or candidate.get("queue_estimate_type") != "popularity_proxy"
+                or isinstance(wait, bool)
+                or not isinstance(wait, int)
+                or not 0 <= wait <= 60
+                or isinstance(queue_score, bool)
+                or not isinstance(queue_score, int)
+                or not 0 <= queue_score <= 100
+            ):
+                rejected_count += 1
+                continue
+            expected_crowd = next(
+                (level for threshold, level in crowd_for_wait if wait <= threshold),
+                "Very High",
+            )
+            if crowd != expected_crowd or (raw_limit is not None and wait > raw_limit):
+                rejected_count += 1
+                continue
+            verified.append({
+                **candidate,
+                "hawker_centre": centre["name"],
+            })
+            continue
+
+        source = get_menu_stall_record(str(stall_id or ""))
         if (
             not source
             or not source.get("hawker_centre_id")
@@ -303,7 +339,10 @@ def _verify_worker_result(
                 "payload": payload,
             }
         verification = (
-            "stall and centre identity, simulated queue provenance, queue values, "
+            "Google place identity, catalogue centre match, proxy provenance, queue fields, "
+            "and parsed hard limit checked"
+            if any(item.get("source") == "google_places" for item in candidates)
+            else "stall and centre identity, simulated queue provenance, queue values, "
             "and parsed hard limit checked"
         )
         confidence = (

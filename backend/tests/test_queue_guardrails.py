@@ -27,6 +27,61 @@ def _candidate(
 
 
 class QueueGuardrailTests(unittest.TestCase):
+    def test_verifier_accepts_google_place_proxy_for_catalogue_centre(self):
+        result = {
+            "agent": "queue",
+            "candidates": [{
+                "stall_id": "places/chinatown-complex",
+                "stall_name": "Chinatown Complex",
+                "hawker_centre_id": "smith_street_blk_335_chinatown_complex_market",
+                "hawker_centre": "Chinatown Complex",
+                "queue_minutes": 3,
+                "crowd_level": "Low",
+                "queue_score": 91,
+                "source": "google_places",
+                "data_origin": "google_places",
+                "place_id": "places/chinatown-complex",
+                "queue_is_mock": False,
+                "queue_estimate_type": "popularity_proxy",
+            }],
+        }
+
+        checked = _verify_worker_result(result, {})
+
+        self.assertTrue(checked["verified"])
+        self.assertEqual(len(checked["candidates"]), 1)
+        self.assertEqual(
+            checked["candidates"][0]["hawker_centre"],
+            "Smith Street Blk 335 (Chinatown Complex Market)",
+        )
+        self.assertEqual(
+            checked["verification"],
+            "Google place identity, catalogue centre match, proxy provenance, queue fields, and parsed hard limit checked",
+        )
+
+    def test_verifier_rejects_google_place_proxy_for_unknown_centre(self):
+        result = {
+            "agent": "queue",
+            "candidates": [{
+                "stall_id": "places/fake-place",
+                "stall_name": "Chinatown Complex",
+                "hawker_centre_id": "not-a-catalogue-centre",
+                "queue_minutes": 3,
+                "crowd_level": "Low",
+                "queue_score": 91,
+                "source": "google_places",
+                "data_origin": "google_places",
+                "place_id": "places/fake-place",
+                "queue_is_mock": False,
+                "queue_estimate_type": "popularity_proxy",
+            }],
+        }
+
+        checked = _verify_worker_result(result, {})
+
+        self.assertTrue(checked["verified"])
+        self.assertEqual(checked["candidates"], [])
+
     @patch("agents.verifier.get_menu_stall_record")
     def test_verifier_rejects_bad_provenance_identity_crowd_and_hard_limit(
         self, get_stall

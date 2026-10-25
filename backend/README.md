@@ -14,16 +14,21 @@ A simple Flask backend scaffold for the Smart Hawker AI project.
    ```bash
    pip install -r requirements.txt
    ```
-3. Update your OpenAI API Key
+3. Update your API keys
 
 
    Create file .env under backend directory as such
    ```bash
    OPENAI_API_KEY=[your-secret-key]
+   QUEUE_FEED_PROVIDER=mock
+   # or, for live Google Places-backed queue discovery:
+   # QUEUE_FEED_PROVIDER=google_places
+   # GOOGLE_PLACES_API_KEY=[your-google-places-key]
    ```
-   *Note: do not push your .env file
+   *Note: do not push your .env file*
 
-   
+   `QUEUE_FEED_PROVIDER` defaults to `mock` to preserve the repository's deterministic local demo. Set it to `google_places` to switch the queue agent to Google Places-based lookup. Google Places does not return actual queue times, so the adapter estimates a queue proxy from place popularity and status.
+
 4. Start the backend
    ```bash
    python main.py

@@ -1,7 +1,10 @@
 import unittest
 
 from agents.orchestrator import (
+    _current_turn_supports_food_action,
     _explicit_origin_from_message,
+    _force_food_request_intent,
+    _force_queue_request,
     _normalize_queue_intent,
     _normalize_tasks,
     _queue_status_response,
@@ -31,6 +34,60 @@ class OrchestratorQueueRoutingTests(unittest.TestCase):
         )
 
         self.assertIn("queue", [task.agent for task in tasks])
+
+    def test_plural_queue_phrase_is_treated_as_food_action(self):
+        self.assertTrue(
+            _current_turn_supports_food_action(
+                "How are the queues like for chinatown complex market, Ming Fa?",
+                {"turns": []},
+            )
+        )
+
+    def test_queue_phrase_forces_food_discovery_intent(self):
+        parsed = ParsedRequest(intent="smalltalk")
+        forced = _force_queue_request(
+            parsed,
+            "How are the queues like for chinatown complex market, Ming Fa?",
+        )
+
+        self.assertEqual(forced.intent, "food_discovery")
+
+    def test_weather_phrase_dispatches_weather_worker(self):
+        parsed = ParsedRequest(intent="smalltalk")
+        forced = _force_food_request_intent(
+            parsed,
+            "How is the weather like at Chinatown Complex?",
+        )
+
+        self.assertEqual(forced.intent, "food_discovery")
+
+        tasks = _normalize_tasks(
+            [],
+            forced,
+            "How is the weather like at Chinatown Complex?",
+        )
+        self.assertIn("weather", [task.agent for task in tasks])
+
+    def test_budget_and_dietary_phrase_dispatches_relevant_workers(self):
+        parsed = ParsedRequest(
+            intent="other",
+            dietary_preferences=["halal"],
+            budget_amount=8.0,
+        )
+        forced = _force_food_request_intent(
+            parsed,
+            "I want halal food under $8 near Bugis",
+        )
+
+        self.assertEqual(forced.intent, "food_discovery")
+
+        tasks = _normalize_tasks(
+            [],
+            forced,
+            "I want halal food under $8 near Bugis",
+        )
+        self.assertIn("dietary", [task.agent for task in tasks])
+        self.assertIn("budget", [task.agent for task in tasks])
 
     def test_queue_intent_normalizes_and_dispatches_queue_worker(self):
         parsed = ParsedRequest(intent="queue")
@@ -161,6 +218,43 @@ class OrchestratorQueueRoutingTests(unittest.TestCase):
 
         self.assertIn("couldn't find queue estimates", reply)
         self.assertIn("not a live service", reply)
+
+    def test_google_places_queue_answer_is_caveated_and_not_called_simulated(self):
+        reply = _queue_status_response(
+            "How are the queues like for Chinatown Complex Market, Ming Fa?",
+            [{
+                "agent": "queue",
+                "verified": True,
+                "evidence": [{"data_sources": ["google_places"]}],
+                "candidates": [{
+                    "source": "google_places",
+                    "hawker_centre": "Smith Street Blk 335 (Chinatown Complex Market)",
+                    "stall_name": "Chinatown Complex",
+                    "queue_minutes": 3,
+                    "crowd_level": "Low",
+                }],
+            }],
+        )
+
+        self.assertIn("live place metadata", reply)
+        self.assertIn("not observed queue times", reply)
+        self.assertIn("not stall-specific waits", reply)
+        self.assertIn("did not provide stall-specific queue data", reply)
+        self.assertNotIn("SIMULATED QUEUE DATA", reply)
+
+    def test_empty_google_places_response_does_not_claim_mock_feed(self):
+        reply = _queue_status_response(
+            "How are the queues like?",
+            [{
+                "agent": "queue",
+                "verified": True,
+                "evidence": [{"data_sources": ["google_places"]}],
+                "candidates": [],
+            }],
+        )
+
+        self.assertIn("does not provide actual queue or wait-time data", reply)
+        self.assertNotIn("simulated demo data", reply)
 
     def test_synthesizer_prefers_queue_data_over_empty_menu_fallback(self):
         result = synthesizer({
