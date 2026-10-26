@@ -1,6 +1,7 @@
 """Parse requests, route location first, run relevant workers, and verify outputs."""
 
 import json
+import math
 import operator
 import os
 import re
@@ -803,12 +804,13 @@ def reuse_location(state: SharedState) -> dict[str, Any]:
 
 
 def expand_menu_search(state: SharedState) -> dict[str, Any]:
-    """If the nearest shortlist has no catalogue match, use further routed centres."""
+    """Preserve matching Location choices; expand only without an eligible match."""
     from services.activity_log import log_activity
 
     request_id = state.get("request_id")
     parsed = state.get("parsed_request", {})
     location = dict(state.get("location_result") or {})
+    location["limitations"] = list(location.get("limitations", []))
     if (
         state.get("needs_location")
         or state.get("location_reused")
@@ -841,16 +843,50 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         INFERRED_DIETS,
     )
 
-    routes = [
-        item for item in location.get("logistics", [])
-        if isinstance(item, dict)
-        and item.get("centre_id")
-        and isinstance(item.get("travel"), dict)
-        and item["travel"].get("total_duration_min") is not None
-    ]
-    if not routes:
+    supplied_routes = location.get("logistics") or []
+    if not supplied_routes:
         log_activity(request_id, "menu_search.skipped", reason="no_route_evidence")
         return {}
+
+    # Compare primary evidence before filtering usability: a bad duplicate must
+    # not disappear and leave a conflicting copy looking authoritative.
+    primary_by_id, route_by_id, ambiguous_ids = {}, {}, set()
+    excluded_evidence = False
+    for item in supplied_routes:
+        if not isinstance(item, dict) or not isinstance(item.get("centre_id"), str) or not item["centre_id"]:
+            excluded_evidence = True
+            continue
+        centre_id = item["centre_id"]
+        primary = {key: item.get(key) for key in (
+            "centre_id", "centre_name", "address", "coordinates", "route_id", "travel",
+        )}
+        if centre_id in primary_by_id and primary_by_id[centre_id] != primary:
+            ambiguous_ids.add(centre_id)
+        else:
+            primary_by_id.setdefault(centre_id, primary)
+            route_by_id.setdefault(centre_id, item)
+
+    routes = []
+    for centre_id, item in route_by_id.items():
+        travel = item.get("travel")
+        minutes = travel.get("total_duration_min") if isinstance(travel, dict) else None
+        if (
+            centre_id not in ambiguous_ids
+            and isinstance(travel, dict) and travel.get("source") == "onemap"
+            and travel.get("mode") in {"pt", "walk", "drive", "cycle"}
+            and isinstance(minutes, (int, float)) and not isinstance(minutes, bool)
+            and minutes >= 0 and (isinstance(minutes, int) or math.isfinite(minutes))
+        ):
+            routes.append(item)
+        else:
+            excluded_evidence = True
+    route_by_id = {item["centre_id"]: item for item in routes}
+    if excluded_evidence:
+        location["limitations"].append(
+            "Ambiguous or unusable primary-route evidence was excluded from menu expansion."
+        )
+    if not routes:
+        location["confidence"] = 0.0
 
     initial = location.get("selected_centres", [])
     initial_ids = {
@@ -867,8 +903,8 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
     # dish search. The menu worker will return entries for the Location
     # shortlist, while synthesis can distinguish an uncovered catalogue from
     # a genuine no-match for a requested dish.
-    if not any((menu_preferences, stall_preferences, cuisine_preferences,
-                dietary_preferences, budget is not None)):
+    if routes and not any((menu_preferences, stall_preferences, cuisine_preferences,
+                          dietary_preferences, budget is not None)):
         log_activity(
             request_id, "menu_search.skipped",
             reason="no_menu_or_budget_filter",
@@ -898,8 +934,17 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         else default_horizon
     )
 
-    route_by_id = {item["centre_id"]: item for item in routes}
-    if any(term in text for term in ("least walking", "less walking", "shortest walk", "walking")):
+    ranked_initial = {}
+    for selected in initial:
+        if isinstance(selected, dict) and selected.get("centre_id") in route_by_id:
+            ranked_initial.setdefault(selected["centre_id"], selected)
+    if ranked_initial:
+        # Location owns travel preferences and relative order. Duration is only
+        # a deterministic policy for supplementary routes, not a re-ranking.
+        def sort_key(item): return (
+            item["travel"]["total_duration_min"], item["centre_id"],
+        )
+    elif any(term in text for term in ("least walking", "less walking", "shortest walk", "walking")):
         def sort_key(item): return (
             item.get("travel", {}).get("walking_distance_m")
             if item.get("travel", {}).get("walking_distance_m") is not None else float("inf"),
@@ -930,8 +975,13 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         and hard_max_minutes is None
         and route["travel"]["total_duration_min"] > horizon_minutes
     ]
+    within_ids = {route["centre_id"] for route in within_horizon}
+
+    menu_matches = {}
 
     def matching_items(centre_id: str) -> list[dict[str, Any]]:
+        if centre_id in menu_matches:
+            return menu_matches[centre_id]
         matches = find_dietary_stalls(
             dietary_preferences=dietary_preferences,
             cuisine_preferences=cuisine_preferences,
@@ -954,6 +1004,7 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
                 item for item in matches
                 if item.get("menu_item_id") in within_budget
             ]
+        menu_matches[centre_id] = matches
         return matches
 
     initial_summary = []
@@ -977,9 +1028,11 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             d for d in dietary_preferences if d not in INFERRED_DIETS]
         if verifiable:
             location["selected_centres"] = [
-                selected for selected in initial
-                if isinstance(selected, dict)
-                and selected.get("centre_id") in {r["centre_id"] for r in within_horizon}
+                {**selected, "rank": rank}
+                for rank, selected in enumerate([
+                    selected for centre_id, selected in ranked_initial.items()
+                    if centre_id in within_ids
+                ][:3], start=1)
             ]
             location["search_expansion"] = {
                 "outcome": "dietary_verification_unavailable",
@@ -988,6 +1041,14 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
                 "route_checked_centre_count": len(within_horizon),
                 "note": "Menu data has no ingredient, allergen, or certification fields to verify this restriction.",
             }
+            if [item["centre_id"] for item in location["selected_centres"]] != [
+                item.get("centre_id") for item in initial if isinstance(item, dict)
+            ]:
+                location["search_expansion"]["initial_location_reasoning"] = location.get("reasoning", "")
+                location["reasoning"] = (
+                    "Route evidence or travel eligibility filtered the Location selection; the catalogue "
+                    "cannot verify the requested dietary restriction."
+                )
             location.setdefault("limitations", []).append(
                 "Nearby menu entries cannot be checked against the requested dietary restriction."
             )
@@ -1005,11 +1066,19 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             )
             return {"location_result": location}
 
+    # The existing matcher applies the food filters together; one eligible
+    # original match is sufficient coverage. Three is a cap, not a quota.
     matched_within = [
-        (route, matching_items(route["centre_id"]))
-        for route in within_horizon
+        (route_by_id[centre_id], matching_items(centre_id))
+        for centre_id in ranked_initial if centre_id in within_ids
     ]
     matched_within = [pair for pair in matched_within if pair[1]]
+    if not matched_within:
+        matched_within = [
+            (route, matching_items(route["centre_id"]))
+            for route in within_horizon
+        ]
+        matched_within = [pair for pair in matched_within if pair[1]]
     matched_farther = []
     if not matched_within and hard_max_minutes is None and not willing_to_travel_farther:
         matched_farther = [
@@ -1071,19 +1140,24 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         "budget_sgd": budget,
     }
 
-    location["selected_centres"] = [
-        {
-            "centre_id": route["centre_id"],
-            "rank": rank,
-            "logistics_fit": 1.0 / rank,
-            "rationale": (
-                "Nearest route-checked centre with a catalogue menu match."
-                if selected_matches else
-                "Nearest route-checked centre inside the search horizon; no matching menu item was found."
-            ),
-        }
-        for rank, (route, _) in enumerate(selected_to_use, start=1)
-    ]
+    location["selected_centres"] = []
+    for rank, (route, _) in enumerate(selected_to_use, start=1):
+        centre_id = route["centre_id"]
+        if centre_id in ranked_initial:
+            location["selected_centres"].append({**ranked_initial[centre_id], "rank": rank})
+        else:
+            location["selected_centres"].append({
+                "centre_id": centre_id,
+                "rank": rank,
+                "logistics_fit": 1.0 / rank,
+                "rationale": (
+                    "Supplementary route-checked centre with a catalogue menu match; "
+                    "selected deterministically by menu expansion, not the Location ranking."
+                    if selected_matches else
+                    "Route-checked centre inside the search horizon; no matching menu item was found."
+                ),
+            })
+    menu_reasoning = "Menu filtering retained eligible matching centres in their original Location order."
     if outcome in {"matched_in_initial_shortlist", "expanded_match_found"}:
         search_info.update({
             "additional_centres": [
@@ -1093,9 +1167,10 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             "matched_menu_item_count": sum(len(items) for _, items in selected_matches),
         })
         if outcome == "expanded_match_found":
-            location["reasoning"] = (
-                "The closest initial centres had no source-backed menu match, so the "
-                "search expanded to the nearest route-checked centres that do."
+            menu_reasoning = (
+                "No eligible Location-selected centre had a catalogue menu match. "
+                "Menu expansion selected supplementary matching centres deterministically "
+                "from the existing in-horizon route pool."
             )
         location.setdefault("limitations", []).append(
             "Menu coverage is partial; expanded results are limited to route-checked centres with linked catalogue entries."
@@ -1109,7 +1184,7 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
             "farther_match_item_count": sum(len(items) for _, items in matched_farther),
             "catalogue_is_partial": True,
         })
-        location["reasoning"] = (
+        menu_reasoning = (
             "No matching menu item was found within the normal nearby-search horizon, "
             "but farther route-checked centres have catalogue matches."
         )
@@ -1119,16 +1194,26 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
     else:
         search_info.update(
             {"farther_matches": [], "catalogue_is_partial": True})
-        location["reasoning"] = (
+        menu_reasoning = (
             "No source-backed menu match was found among the route-checked centres."
         )
         location.setdefault("limitations", []).append(
             "The stall catalogue is partial; absence from these results does not establish that the dish is unavailable elsewhere."
         )
+    if not routes:
+        menu_reasoning = (
+            "The supplied primary routes were ambiguous or unusable; "
+            "no centre could safely be selected."
+        )
     location["search_expansion"] = search_info
     final_centre_ids = [
         route.get("centre_id") for route, _ in selected_to_use
     ]
+    if final_centre_ids != [
+        item.get("centre_id") for item in initial if isinstance(item, dict)
+    ]:
+        search_info["initial_location_reasoning"] = location.get("reasoning", "")
+        location["reasoning"] = menu_reasoning
     matched_counts_by_centre = {
         route.get("centre_id"): len(items)
         for route, items in selected_matches
@@ -1137,6 +1222,11 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         centre_id for centre_id in final_centre_ids
         if centre_id not in initial_ids
     ]
+    if added_centre_ids:
+        location["limitations"].append(
+            "Supplementary centres use deterministic menu expansion; the original "
+            "Location confidence does not assess those additions."
+        )
     log_activity(
         request_id, "menu_search.completed",
         outcome=outcome,
