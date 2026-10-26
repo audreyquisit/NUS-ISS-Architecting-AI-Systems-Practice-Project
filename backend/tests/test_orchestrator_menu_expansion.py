@@ -479,7 +479,7 @@ class OrchestratorMenuExpansionTests(unittest.TestCase):
         ], "tasks": [PlannedTask(agent="dietary", task="Find food")]}
         dispatch = orchestrator.dispatch_workers(state)
         self.assertEqual(dispatch[0].arg["location_result"]["selected_centres"], result["selected_centres"])
-        with patch("agents.verifier.verify_results", return_value=[]) as verify:
+        with patch("agents.verifier._verify_results_with_context", return_value=([], None)) as verify:
             orchestrator.verify_results_node(state)
         envelope = verify.call_args.args[0][0]
         self.assertEqual(envelope["payload"]["selected_centres"], result["selected_centres"])

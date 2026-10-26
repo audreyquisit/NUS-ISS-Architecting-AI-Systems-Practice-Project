@@ -10,6 +10,10 @@ from agents.location_grounding import (
     _LocationGrounding, _RankingOutputError, _matching_snapshot, _reconcile_grounding,
     _render_verified_choice, _usable_primary_routes,
 )
+from agents.recommendation_context import (
+    _MAX_CENTRES, _RecommendationContext, _VerifiedCentre, _VerifiedLocationContext,
+    _build_recommendation_context, _project_primary_route,
+)
 from models.location_models import LocationDecision, TravelEstimate
 
 from services.location_service import load_hawker_centres
@@ -82,7 +86,7 @@ def _public_route(item, source):
 
 
 def _verified_location(result: dict[str, Any], parsed_request=None, *, grounding=None,
-                       request_id=None, location_reused=False) -> dict[str, Any]:
+                       request_id=None, location_reused=False, _context_sink=None) -> dict[str, Any]:
     payload = result.get("payload", result)
     request = parsed_request or {}
     centres = {item["id"]: item for item in load_hawker_centres()}
@@ -262,6 +266,26 @@ def _verified_location(result: dict[str, Any], parsed_request=None, *, grounding
         checked.setdefault("limitations", []).append(
             f"Removed {removed} centre selection(s) that lacked eligible catalogue or route evidence."
         )
+    if _context_sink is not None:
+        source_names = {"grounded_model": "model_ranked", "deterministic_fallback": "deterministic_fallback",
+                        "menu_expansion": "menu_supplement", "unproven": "route_facts_only", "catalogue_only": "catalogue_only"}
+        fit_bases = {"grounded_model": "model_reported_uncalibrated", "deterministic_fallback": "deterministic_policy",
+                     "menu_expansion": "not_location_ranked", "unproven": "no_model_fit", "catalogue_only": "no_model_fit"}
+        public_routes = {item["centre_id"]: item for item in checked["logistics"]}
+        _context_sink.append(_VerifiedLocationContext(
+            centres=tuple(_VerifiedCentre(
+                centre_id=item["centre_id"], rank=item["rank"], rationale=item["rationale"][:1600],
+                logistics_fit=item["logistics_fit"], fit_basis=fit_bases[source], selection_source=source_names[source],
+                primary_route=(_project_primary_route(public_routes[item["centre_id"]]["travel"])
+                               if item["centre_id"] in public_routes else None),
+            ) for item, source in list(zip(selected, sources))[:_MAX_CENTRES]),
+            reasoning=checked["reasoning"], confidence=confidence,
+            confidence_basis=("model_reported_uncalibrated" if whole_basis and bundle.decision_source == "grounded_model"
+                              else "deterministic_policy"),
+            limitations=tuple(dict.fromkeys(checked["limitations"] + [
+                limitation for route in public_routes.values() for limitation in route["limitations"]
+            ])), truncated=len(selected) > _MAX_CENTRES,
+        ))
     return {
         **result,
         "payload": checked,
@@ -568,10 +592,26 @@ def verify_results(
     location_grounding=None, request_id=None, location_reused=False,
 ) -> list[dict[str, Any]]:
     """Check catalogue identity and hard user constraints before synthesis."""
+    return _verify_results(agent_results, parsed_request, location_grounding=location_grounding,
+        request_id=request_id, location_reused=location_reused, capture_context=False)[0]
+
+
+def _verify_results_with_context(
+    agent_results: list[dict[str, Any]], parsed_request: dict[str, Any], *,
+    location_grounding=None, request_id=None, location_reused=False,
+) -> tuple[list[dict[str, Any]], _RecommendationContext]:
+    """Private companion: one verification execution, public results unchanged."""
+    return _verify_results(agent_results, parsed_request, location_grounding=location_grounding,
+        request_id=request_id, location_reused=location_reused, capture_context=True)
+
+
+def _verify_results(agent_results, parsed_request, *, location_grounding, request_id, location_reused, capture_context):
+    location_contexts = [] if capture_context else None
     # Verify Location first, independent of worker/envelope ordering.
     locations = {index: _verified_location(
         result, parsed_request, grounding=location_grounding, request_id=request_id,
         location_reused=location_reused,
+        _context_sink=location_contexts,
     ) for index, result in enumerate(agent_results)
         if isinstance(result, dict) and result.get("agent") == "location"}
     has_food = any(isinstance(result, dict) and result.get("agent") in {"dietary", "budget"}
@@ -682,4 +722,11 @@ def verify_results(
             "verification": "menu item IDs and centre IDs checked against the source-backed catalogue",
         }
         verified.append(joined_result)
-    return verified
+    context = None
+    if capture_context:
+        context = _build_recommendation_context(request_id=request_id, approved_centres=approved_centres,
+            locations=location_contexts, joined=joined if stall_results else [],
+            food_requested=has_food or parsed_request.get("intent") == "food_discovery",
+            dietary_requested=bool(parsed_request.get("dietary_preferences") or parsed_request.get("dietary_preference")),
+            budget_requested=parsed_request.get("budget_amount") is not None)
+    return verified, context

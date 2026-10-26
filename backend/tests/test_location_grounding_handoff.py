@@ -396,7 +396,7 @@ class LocationGroundingHandoffTests(unittest.TestCase):
         state.update(orchestrator.expand_menu_search(state))
         from agents import verifier
         with patch.object(verifier, "load_hawker_centres", return_value=self.catalogue), \
-             patch.object(verifier, "verify_results", wraps=verifier.verify_results) as verify:
+             patch.object(verifier, "_verify_results_with_context", wraps=verifier._verify_results_with_context) as verify:
             updates = orchestrator.verify_results_node(state)
         self.assertEqual(len(verify.call_args.args), 2)
         self.assertEqual(verify.call_args.kwargs, {
@@ -415,7 +415,7 @@ class LocationGroundingHandoffTests(unittest.TestCase):
         state = self.state(decision, bundle)
         state.update(orchestrator.expand_menu_search(state))
         from agents import verifier
-        with patch.object(verifier, "verify_results", return_value=[]) as verify:
+        with patch.object(verifier, "_verify_results_with_context", return_value=([], None)) as verify:
             self.assertIsNone(orchestrator.verify_results_node(state)["location_grounding"])
             current = verify.call_args.kwargs["location_grounding"]
             self.assertEqual(current, state["location_grounding"])
@@ -432,7 +432,7 @@ class LocationGroundingHandoffTests(unittest.TestCase):
         from agents import verifier
         for flags in ({"location_reused": True}, {"needs_location": True},
                       {"parsed_request": {"clarification_question": "Which origin?"}}):
-            with self.subTest(flags=flags), patch.object(verifier, "verify_results", return_value=[]):
+            with self.subTest(flags=flags), patch.object(verifier, "_verify_results_with_context", return_value=([], None)):
                 state = {**self.state(decision, bundle), **flags}
                 self.assertIsNone(orchestrator.verify_results_node(state)["location_grounding"])
 

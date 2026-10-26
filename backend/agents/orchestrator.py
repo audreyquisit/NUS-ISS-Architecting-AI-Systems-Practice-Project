@@ -13,6 +13,7 @@ from langgraph.types import Send
 from typing_extensions import Annotated, TypedDict
 
 from agents.location_grounding import _LocationGrounding, _reconcile_grounding, _usable_primary_routes
+from agents.recommendation_context import _RecommendationContext
 from models.orchestration import (
     AgentResult,
     OrchestrationPlan,
@@ -32,6 +33,7 @@ class SharedState(TypedDict, total=False):
     tasks: list[PlannedTask]
     location_result: Optional[dict]
     location_grounding: Optional[_LocationGrounding]
+    recommendation_context: Optional[_RecommendationContext]
     agent_results: Annotated[list[dict], operator.add]
     verified_results: list[dict]
     final_recommendation: str
@@ -707,7 +709,7 @@ def location_worker(state: SharedState) -> dict[str, Any]:
     task = next(
         (item for item in state["tasks"] if item.agent == "location"), None)
     if task is None:
-        return {"location_result": None, "needs_location": False, "location_grounding": None}
+        return {"location_result": None, "needs_location": False, "location_grounding": None, "recommendation_context": None}
     from agents.location_agent import MissingOriginError, LocationResolutionError, _run_with_grounding
     from services.location_service import LocationServiceError
 
@@ -785,6 +787,7 @@ def location_worker(state: SharedState) -> dict[str, Any]:
     return {
         "location_result": result,
         "location_grounding": grounding,
+        "recommendation_context": None,
         "needs_location": needs_location,
         "agent_results": [envelope],
     }
@@ -798,11 +801,12 @@ def reuse_location(state: SharedState) -> dict[str, Any]:
         .get("location_result")
     )
     if not isinstance(cached, dict) or not cached.get("selected_centres"):
-        return {"location_result": None, "location_reused": False, "location_grounding": None}
+        return {"location_result": None, "location_reused": False, "location_grounding": None, "recommendation_context": None}
     return {
         "location_result": cached,
         "location_reused": True,
         "location_grounding": None,
+        "recommendation_context": None,
         "agent_results": [_result_envelope("location", cached)],
     }
 
@@ -1408,7 +1412,7 @@ def _canonical_worker_task(agent: str, parsed: dict[str, Any]) -> str:
 
 def location_required_response(state: SharedState) -> dict[str, Any]:
     error = (state.get("location_result") or {}).get("error")
-    return {"final_recommendation": error or "Please share a starting location.", "location_grounding": None}
+    return {"final_recommendation": error or "Please share a starting location.", "location_grounding": None, "recommendation_context": None}
 
 
 def respond_without_workers(state: SharedState) -> dict[str, Any]:
@@ -1420,12 +1424,12 @@ def respond_without_workers(state: SharedState) -> dict[str, Any]:
         )
     else:
         reply = "I can help with hawker food recommendations. Tell me what you want and where to look."
-    return {"final_recommendation": reply, "location_grounding": None}
+    return {"final_recommendation": reply, "location_grounding": None, "recommendation_context": None}
 
 
 def clarification_response(state: SharedState) -> dict[str, Any]:
     question = state.get("parsed_request", {}).get("clarification_question")
-    return {"final_recommendation": question or "Could you clarify what you mean?", "location_grounding": None}
+    return {"final_recommendation": question or "Could you clarify what you mean?", "location_grounding": None, "recommendation_context": None}
 
 
 def _queue_status_response(user_request: str, verified: list[dict[str, Any]],
@@ -1570,7 +1574,7 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]],
 
 def verify_results_node(state: SharedState) -> dict[str, Any]:
     from services.activity_log import log_activity
-    from agents.verifier import verify_results
+    from agents.verifier import _verify_results_with_context
 
     agent_results = list(state.get("agent_results", []))
     location_result = state.get("location_result")
@@ -1584,7 +1588,7 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
     location_grounding = _reconcile_grounding(
         _current_location_grounding(state), state.get("location_result") or {}, state.get("request_id"),
     )
-    verified = verify_results(
+    verified, recommendation_context = _verify_results_with_context(
         agent_results, state.get("parsed_request", {}), location_grounding=location_grounding,
         request_id=state.get("request_id"), location_reused=bool(state.get("location_reused")),
     )
@@ -1603,7 +1607,7 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
         ), 0),
     )
     # This was incoming Location authority, not post-verifier approval. Consume once.
-    return {"verified_results": verified, "location_grounding": None}
+    return {"verified_results": verified, "location_grounding": None, "recommendation_context": recommendation_context}
 
 
 def resolve_conflicts(state: SharedState) -> dict[str, Any]:
