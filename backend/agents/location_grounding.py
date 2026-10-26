@@ -12,6 +12,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, FiniteFloat, StrictInt, ValidationError
 
+from models.location_models import TravelEstimate
+
 
 _Metric = Literal["total_duration_min", "walking_distance_m", "transfers", "mode", "walking_time_min"]
 _METRICS = ("total_duration_min", "walking_distance_m", "transfers", "mode", "walking_time_min")
@@ -131,6 +133,7 @@ def _usable_primary_routes(supplied_routes) -> tuple[dict, bool]:
         if (
             centre_id not in ambiguous_ids
             and isinstance(travel, dict) and travel.get("source") == "onemap"
+            and isinstance(travel.get("mode"), str)
             and travel.get("mode") in {"pt", "walk", "drive", "cycle"}
             and not any(isinstance(travel.get(metric), bool) for metric in _METRICS)
             and isinstance(minutes, (int, float)) and not isinstance(minutes, bool)
@@ -260,3 +263,145 @@ def _reconcile_grounding(bundle, decision: dict, request_id=None, *, allow_suppl
         "selections": tuple(selections), "supplements": tuple(supplements),
         "active_order": tuple(centre_id for centre_id in final if centre_id in active),
     })
+
+
+class _RankingOutputError(ValueError):
+    """An unusable ranking response, distinct from application ValueError."""
+
+
+_METRIC_LABELS = {
+    "total_duration_min": "shortest travel duration",
+    "walking_distance_m": "least measured walking distance",
+    "transfers": "fewest measured transfers",
+}
+
+
+def _render_route_reason(centre_id, reason, names, facts, objectives=()):
+    """Shared factual validation/rendering; preference interpretation stays in Location."""
+    def metric_text(metric, value):
+        if metric == "total_duration_min":
+            return f"{value} min"
+        if metric == "transfers":
+            return f"{value} transfer(s)"
+        estimate = TravelEstimate(
+            mode="pt", source="onemap", confidence=0.5, walking_distance_m=value,
+        )
+        return f"{estimate.walking_distance_display} walking"
+
+    refs = reason.evidence_refs
+    if len(refs) != len(set(refs)) or any(ref not in facts for ref in refs):
+        raise _RankingOutputError("invalid_evidence_reference")
+    other_id = reason.comparison_centre_id
+    other = names.get(other_id)
+    if other_id is not None and (other is None or other_id == centre_id):
+        raise _RankingOutputError("invalid_comparison_centre")
+    def ref(centre_id, metric):
+        return f"{centre_id}:primary:{metric}"
+    def pair(metric):
+        expected = {ref(centre_id, metric), ref(other_id, metric)}
+        if not expected <= set(refs):
+            raise _RankingOutputError("missing_comparison_evidence")
+        values = [facts[key] for key in (ref(centre_id, metric), ref(other_id, metric))]
+        if any(fact["provenance"] != "measured" or fact["value"] is None for fact in values):
+            raise _RankingOutputError("unavailable_comparison_metric")
+        return [fact["value"] for fact in values]
+    if reason.code == "PRIMARY_ROUTE":
+        if other_id is not None or set(refs) != {ref(centre_id, "total_duration_min")}:
+            raise _RankingOutputError("invalid_primary_route_reason")
+        return f"Verified primary route: {facts[ref(centre_id, 'total_duration_min')]['value']} min."
+    if reason.code == "METRIC_UNAVAILABLE":
+        if other_id is not None or any(
+            facts[key]["centre_id"] != centre_id
+            or facts[key]["metric"] not in {"walking_distance_m", "transfers", "walking_time_min"}
+            or facts[key]["provenance"] != "unavailable" for key in refs
+        ):
+            raise _RankingOutputError("invalid_missing_metric_reason")
+        names = {"walking_distance_m": "Walking distance", "transfers": "Transfer count",
+                 "walking_time_min": "Walking-time estimate"}
+        return "; ".join(f"{names[facts[key]['metric']]} unavailable" for key in refs) + "."
+    if other is None:
+        raise _RankingOutputError("missing_comparison_centre")
+    if reason.code == "BALANCED_TRADEOFF":
+        metrics = ["total_duration_min"]
+        for metric in ("walking_distance_m", "transfers"):
+            if ref(centre_id, metric) in refs or ref(other_id, metric) in refs:
+                metrics.append(metric)
+        if len(metrics) < 2 or set(refs) != {
+            ref(centre, metric) for centre in (centre_id, other_id) for metric in metrics
+        }:
+            raise _RankingOutputError("invalid_tradeoff_evidence")
+        values = [pair(metric) for metric in metrics]
+        if not any(a < b for a, b in values) or not any(a > b for a, b in values):
+            raise _RankingOutputError("not_a_measured_tradeoff")
+        if objectives and not any(
+            a < b and metric in objectives for metric, (a, b) in zip(metrics, values)
+        ):
+            raise _RankingOutputError("tradeoff_conflicts_with_objectives")
+        return "Trade-off versus " + other + ": " + "; ".join(
+            f"{metric_text(metric, a)} versus {metric_text(metric, b)}"
+            for metric, (a, b) in zip(metrics, values)
+        ) + "."
+    metric = {"SHORTER_DURATION": "total_duration_min", "LESS_MEASURED_WALKING": "walking_distance_m",
+              "FEWER_KNOWN_TRANSFERS": "transfers"}[reason.code]
+    if set(refs) != {ref(centre_id, metric), ref(other_id, metric)}:
+        raise _RankingOutputError("invalid_comparison_evidence")
+    a, b = pair(metric)
+    if a >= b:
+        raise _RankingOutputError("false_comparative_claim")
+    return f"{metric_text(metric, a)} versus {other}'s {metric_text(metric, b)}."
+
+
+def _matching_snapshot(snapshot, item: dict) -> bool:
+    """Check both identity and captured facts, without trusting a digest alone."""
+    try:
+        expected = _snapshot(item)
+    except ValidationError:
+        return False
+    return (
+        snapshot.centre_id == expected.centre_id and snapshot.route_id == expected.route_id
+        and snapshot.source == expected.source and snapshot.identity_digest == expected.identity_digest
+        and len(snapshot.facts) == len(expected.facts)
+        and all(
+            not isinstance(actual.value, bool)
+            and actual.id == fact.id and actual.metric == fact.metric
+            and actual.value == fact.value and actual.provenance == fact.provenance
+            for actual, fact in zip(snapshot.facts, expected.facts)
+        )
+    )
+
+
+def _render_verified_choice(bundle, choice, matched, names) -> str:
+    """Render accepted private claims only against independently matched snapshots."""
+    basis = ("deterministic_policy" if choice.source == "deterministic_fallback"
+             else "model_reported_uncalibrated")
+    if (choice.status != "active" or choice.centre_id not in matched
+            or choice.route_id != matched[choice.centre_id].route_id
+            or choice.source != bundle.decision_source or choice.fit_basis != basis
+            or bundle.confidence_basis != basis or not choice.reasons
+            or not isinstance(choice.original_rank, int) or isinstance(choice.original_rank, bool)
+            or not isinstance(choice.logistics_fit, (int, float)) or isinstance(choice.logistics_fit, bool)
+            or not math.isfinite(choice.logistics_fit) or not 0 <= choice.logistics_fit <= 1):
+        raise _RankingOutputError("invalid_selection_provenance")
+    facts = {
+        fact.id: {**fact.model_dump(), "centre_id": route.centre_id, "route_id": route.route_id}
+        for route in matched.values() for fact in route.facts
+    }
+    if choice.source == "deterministic_fallback":
+        order = bundle.fallback_order
+        if (not bundle.fallback_reason or not order or len(order) != len(set(order))
+                or "total_duration_min" not in order or any(metric not in _METRIC_LABELS for metric in order)
+                or choice.logistics_fit != 0.5 or bundle.confidence != 0.5
+                or len(choice.reasons) != 1 or choice.reasons[0].code != "DETERMINISTIC_ORDER"
+                or choice.reasons[0].comparison_centre_id is not None
+                or choice.reasons[0].evidence_refs != tuple(
+                    f"{choice.centre_id}:primary:{metric}" for metric in order)):
+            raise _RankingOutputError("invalid_fallback_provenance")
+        policy = ", then ".join(_METRIC_LABELS[metric] for metric in order)
+        minutes = facts[f"{choice.centre_id}:primary:total_duration_min"]["value"]
+        return f"Deterministic fallback ordered by {policy}; OneMap travel duration is {minutes} min."
+    if bundle.fallback_reason is not None or bundle.fallback_order:
+        raise _RankingOutputError("invalid_model_provenance")
+    if any(reason.code == "DETERMINISTIC_ORDER" for reason in choice.reasons):
+        raise _RankingOutputError("invalid_model_reason")
+    return " ".join(_render_route_reason(choice.centre_id, reason, names, facts)
+                    for reason in choice.reasons)

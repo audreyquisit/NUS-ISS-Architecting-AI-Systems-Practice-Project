@@ -1428,7 +1428,8 @@ def clarification_response(state: SharedState) -> dict[str, Any]:
     return {"final_recommendation": question or "Could you clarify what you mean?", "location_grounding": None}
 
 
-def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) -> Optional[str]:
+def _queue_status_response(user_request: str, verified: list[dict[str, Any]],
+                           parsed_request: Optional[dict] = None) -> Optional[str]:
     if not _requests_queue_data(user_request):
         return None
     queue_result = next((
@@ -1442,6 +1443,28 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
         item for item in queue_result.get("candidates", [])
         if isinstance(item, dict) and item.get("queue_minutes") is not None
     ]
+    request = parsed_request or {}
+    stall_preferences = request.get("stall_name_preferences", [])
+    if stall_preferences:
+        from services.hawker_service import _normalise
+        queue_candidates = [item for item in queue_candidates if any(
+            _normalise(preference) in _normalise(item.get("stall_name", ""))
+            for preference in stall_preferences if preference
+        )]
+    # Queue intent can be normalized to food_discovery. A stall-name-only
+    # lookup remains a queue question; additional food constraints require
+    # the verifier's food join, never queue evidence alone.
+    mixed_food = any((request.get("menu_item_preferences"), request.get("cuisine_preferences"),
+                      request.get("dietary_preferences"), request.get("dietary_preference"),
+                      request.get("excluded_menu_item_ids"), request.get("budget_amount") is not None))
+    if mixed_food:
+        joined = next((item for item in verified if item.get("agent") == "candidate_join"
+                       and item.get("verified")), {})
+        food_stalls = {item.get("stall_id") for item in joined.get("candidates", [])
+                       if isinstance(item, dict) and isinstance(item.get("stall_id"), str)}
+        if not food_stalls:
+            return None  # Let the existing food failure/approval branches explain the result.
+        queue_candidates = [item for item in queue_candidates if item.get("stall_id") in food_stalls]
     if not queue_candidates:
         return (
             "I couldn't find queue estimates for the route-shortlisted centres. "
@@ -1465,10 +1488,11 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
         item.get("centre_id") for item in selected
         if isinstance(item, dict) and item.get("centre_id")
     ]
+    location_scoped = any(item.get("agent") == "location" for item in verified)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for candidate in queue_candidates:
         centre_id = candidate.get("hawker_centre_id")
-        if selected_ids and centre_id not in selected_ids:
+        if location_scoped and centre_id not in selected_ids:
             continue
         grouped.setdefault(str(centre_id or candidate.get(
             "hawker_centre") or ""), []).append(candidate)
@@ -1515,7 +1539,8 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) ->
     origin = location.get("origin_label")
     heading = (
         f"Queue and crowd estimates near {origin}:"
-        if origin else "Queue and crowd estimates for the nearby centres:"
+        if origin and location.get("logistics")
+        else "Queue and crowd estimates for the selected centres:"
     )
     summary_lines = [
         "SIMULATED QUEUE DATA: These estimates are for demonstration only, not live conditions.",
@@ -1555,12 +1580,13 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
             replacement if item.get("agent") == "location" else item
             for item in agent_results
         ]
-    # Phase 5B.1 stops here. Keep the sidecar out of the current verifier call.
+    # Private keyword handoff only: never put grounding in an envelope or trace.
     location_grounding = _reconcile_grounding(
         _current_location_grounding(state), state.get("location_result") or {}, state.get("request_id"),
     )
     verified = verify_results(
-        agent_results, state.get("parsed_request", {})
+        agent_results, state.get("parsed_request", {}), location_grounding=location_grounding,
+        request_id=state.get("request_id"), location_reused=bool(state.get("location_reused")),
     )
     log_activity(
         state.get("request_id"), "verification.completed",
@@ -1576,7 +1602,8 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
             if item.get("agent") == "candidate_join"
         ), 0),
     )
-    return {"verified_results": verified, "location_grounding": location_grounding}
+    # This was incoming Location authority, not post-verifier approval. Consume once.
+    return {"verified_results": verified, "location_grounding": None}
 
 
 def resolve_conflicts(state: SharedState) -> dict[str, Any]:
@@ -1609,7 +1636,7 @@ def synthesizer(state: SharedState) -> dict[str, str]:
 
     def disclose_origin(reply: str) -> str:
         origin_label = location.get("origin_label")
-        if not origin_label or not location.get("selected_centres"):
+        if not origin_label or not location.get("selected_centres") or not location.get("logistics"):
             return reply
         return (
             f"Starting point used: {origin_label}. Walking distance and time "
@@ -1636,8 +1663,15 @@ def synthesizer(state: SharedState) -> dict[str, str]:
             "can't confirm food options there. I haven't substituted other "
             f"centres for it.{nearby_offer} You can also name another centre."
         )}
+    if (any(item.get("agent") == "location" for item in verified)
+            and not location.get("selected_centres") and parsed.get("max_travel_time_min") is not None
+            and location.get("search_expansion", {}).get("outcome") != "farther_match_requires_approval"):
+        return {"final_recommendation": (
+            "No eligible centres have current route evidence satisfying your hard travel-time limit. "
+            "Cached catalogue selections and queue estimates cannot establish travel eligibility."
+        )}
     queue_reply = _queue_status_response(
-        state.get("user_request", ""), verified
+        state.get("user_request", ""), verified, parsed
     )
     if queue_reply:
         return {"final_recommendation": disclose_origin(queue_reply)}
@@ -1656,6 +1690,7 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                 parsed.get("stall_name_preferences"),
                 parsed.get("cuisine_preferences"),
                 parsed.get("dietary_preferences"),
+                parsed.get("excluded_menu_item_ids"),
                 parsed.get("budget_amount") is not None,
             ))
             if not has_food_filter:
@@ -1690,8 +1725,13 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                 if nearby:
                     origin = location.get(
                         "origin_label") or "your starting point"
+                    fresh_routes = all(item.get("centre_id") in routes for item in selected[:3])
+                    introduction = (
+                        f"The route-checked hawker centres from {origin} are: " if fresh_routes
+                        else "Catalogue hawker centres (without fresh route verification) are: "
+                    )
                     return {"final_recommendation": disclose_origin(
-                        f"The closest route-checked hawker centres near {origin} are: "
+                        introduction +
                         f"{'; '.join(nearby)}. I don't have menu listings for these "
                         "centres in the current stall catalogue, so I can't reliably "
                         "name their food options yet. That is a data coverage gap, "
@@ -1751,6 +1791,14 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                         "clear, or search using another preference?"
                     )
                 }
+
+            # A failed mixed food/queue join must not trigger either a queue-only
+            # answer or an additional model call to invent eligible food.
+            if _requests_queue_data(state.get("user_request", "")) and has_food_filter:
+                return {"final_recommendation": (
+                    "I couldn't verify food options matching your request in the approved centres. "
+                    "Queue estimates alone cannot establish food eligibility; the menu catalogue is partial."
+                )}
 
     from agents.recommendation_agent import run
 

@@ -390,7 +390,7 @@ class LocationGroundingHandoffTests(unittest.TestCase):
         self.assertEqual(len(current.supplements), 3)
         self.assertEqual(current.active_order, ("r10", "r11", "r12"))
 
-    def test_verifier_boundary_keeps_private_bundle_and_existing_arguments_and_behavior(self):
+    def test_verifier_boundary_consumes_private_bundle_without_public_leakage(self):
         decision, bundle = self.execute()
         state = self.state(decision, bundle)
         state.update(orchestrator.expand_menu_search(state))
@@ -399,11 +399,13 @@ class LocationGroundingHandoffTests(unittest.TestCase):
              patch.object(verifier, "verify_results", wraps=verifier.verify_results) as verify:
             updates = orchestrator.verify_results_node(state)
         self.assertEqual(len(verify.call_args.args), 2)
-        self.assertEqual(verify.call_args.kwargs, {})
-        self.assertEqual(updates["location_grounding"], state["location_grounding"])
+        self.assertEqual(verify.call_args.kwargs, {
+            "location_grounding": state["location_grounding"],
+            "request_id": self.query.request_id, "location_reused": False,
+        })
+        self.assertIsNone(updates["location_grounding"])
         verified = updates["verified_results"][0]["payload"]
-        self.assertEqual(verified["selected_centres"][0]["logistics_fit"], 1.0)
-        self.assertIn("Selected from verified catalogue", verified["selected_centres"][0]["rationale"])
+        self.assertEqual(verified["selected_centres"], decision["selected_centres"])
         self.assertNotIn(bundle.execution_id, json.dumps(verify.call_args.args))
         self.assertNotIn(bundle.execution_id, json.dumps(updates["verified_results"]))
 
@@ -413,13 +415,15 @@ class LocationGroundingHandoffTests(unittest.TestCase):
         state = self.state(decision, bundle)
         state.update(orchestrator.expand_menu_search(state))
         from agents import verifier
-        with patch.object(verifier, "verify_results", return_value=[]):
-            current = orchestrator.verify_results_node(state)["location_grounding"]
+        with patch.object(verifier, "verify_results", return_value=[]) as verify:
+            self.assertIsNone(orchestrator.verify_results_node(state)["location_grounding"])
+            current = verify.call_args.kwargs["location_grounding"]
             self.assertEqual(current, state["location_grounding"])
             unknown = next(item for item in state["location_result"]["logistics"]
                            if item["centre_id"] == "unknown")
             unknown["travel"]["total_duration_min"] = 9
-            current = orchestrator.verify_results_node(state)["location_grounding"]
+            self.assertIsNone(orchestrator.verify_results_node(state)["location_grounding"])
+            current = verify.call_args.kwargs["location_grounding"]
         self.assertEqual(current.active_order, ("direct",))
         self.assertEqual([item.selection.centre_id for item in current.supplements], ["direct"])
 

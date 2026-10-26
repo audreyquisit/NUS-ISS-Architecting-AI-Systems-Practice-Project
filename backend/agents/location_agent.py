@@ -19,7 +19,10 @@ from openai import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
-from agents.location_grounding import _capture_grounding, _primary_facts, _reconcile_grounding
+from agents.location_grounding import (
+    _METRIC_LABELS, _RankingOutputError, _capture_grounding, _primary_facts,
+    _reconcile_grounding, _render_route_reason,
+)
 from models.location_models import (
     CentreLogistics,
     LocationDecision,
@@ -120,10 +123,6 @@ class _GroundedRanking(_PrivateRankingModel):
     confidence: float = Field(ge=0, le=1)
 
 
-class _RankingOutputError(ValueError):
-    """An unusable ranking response, distinct from application ValueError."""
-
-
 _PRIORITY_METRICS = {
     "fastest": "total_duration_min", "quickest": "total_duration_min",
     "shortest duration": "total_duration_min", "shortest travel time": "total_duration_min",
@@ -133,11 +132,6 @@ _PRIORITY_METRICS = {
     "shortest walk": "walking_distance_m",
     "fewest transfers": "transfers", "fewer transfers": "transfers",
     "few transfers": "transfers", "avoid transfers": "transfers", "no transfers": "transfers",
-}
-_METRIC_LABELS = {
-    "total_duration_min": "shortest travel duration",
-    "walking_distance_m": "least measured walking distance",
-    "transfers": "fewest measured transfers",
 }
 
 
@@ -803,79 +797,7 @@ def _render_grounded_ranking(
     routes = {item.centre_id: item for item in shortlist}
     rendered, comparisons = {}, {}
 
-    def metric_text(metric, value):
-        if metric == "total_duration_min":
-            return f"{value} min"
-        if metric == "transfers":
-            return f"{value} transfer(s)"
-        estimate = TravelEstimate(
-            mode="pt", source="onemap", confidence=0.5, walking_distance_m=value,
-        )
-        return f"{estimate.walking_distance_display} walking"
-
-    def render_reason(choice, reason):
-        refs = reason.evidence_refs
-        if len(refs) != len(set(refs)) or any(ref not in facts for ref in refs):
-            raise _RankingOutputError("invalid_evidence_reference")
-        own = routes[choice.centre_id]
-        other_id = reason.comparison_centre_id
-        other = routes.get(other_id)
-        if other_id is not None and (other is None or other_id == choice.centre_id):
-            raise _RankingOutputError("invalid_comparison_centre")
-        def ref(centre_id, metric):
-            return f"{centre_id}:primary:{metric}"
-        def pair(metric):
-            expected = {ref(choice.centre_id, metric), ref(other_id, metric)}
-            if not expected <= set(refs):
-                raise _RankingOutputError("missing_comparison_evidence")
-            values = [facts[key] for key in (ref(choice.centre_id, metric), ref(other_id, metric))]
-            if any(fact["provenance"] != "measured" or fact["value"] is None for fact in values):
-                raise _RankingOutputError("unavailable_comparison_metric")
-            return [fact["value"] for fact in values]
-        if reason.code == "PRIMARY_ROUTE":
-            if other_id is not None or set(refs) != {ref(choice.centre_id, "total_duration_min")}:
-                raise _RankingOutputError("invalid_primary_route_reason")
-            return f"Verified primary route: {own.travel.total_duration_min} min."
-        if reason.code == "METRIC_UNAVAILABLE":
-            if other_id is not None or any(
-                facts[key]["centre_id"] != choice.centre_id
-                or facts[key]["metric"] not in {"walking_distance_m", "transfers", "walking_time_min"}
-                or facts[key]["provenance"] != "unavailable" for key in refs
-            ):
-                raise _RankingOutputError("invalid_missing_metric_reason")
-            names = {"walking_distance_m": "Walking distance", "transfers": "Transfer count",
-                     "walking_time_min": "Walking-time estimate"}
-            return "; ".join(f"{names[facts[key]['metric']]} unavailable" for key in refs) + "."
-        if other is None:
-            raise _RankingOutputError("missing_comparison_centre")
-        if reason.code == "BALANCED_TRADEOFF":
-            metrics = ["total_duration_min"]
-            for metric in ("walking_distance_m", "transfers"):
-                if ref(choice.centre_id, metric) in refs or ref(other_id, metric) in refs:
-                    metrics.append(metric)
-            if len(metrics) < 2 or set(refs) != {
-                ref(centre, metric) for centre in (choice.centre_id, other_id) for metric in metrics
-            }:
-                raise _RankingOutputError("invalid_tradeoff_evidence")
-            values = [pair(metric) for metric in metrics]
-            if not any(a < b for a, b in values) or not any(a > b for a, b in values):
-                raise _RankingOutputError("not_a_measured_tradeoff")
-            if profile.objectives and not any(
-                a < b and metric in profile.objectives for metric, (a, b) in zip(metrics, values)
-            ):
-                raise _RankingOutputError("tradeoff_conflicts_with_objectives")
-            return "Trade-off versus " + other.centre_name + ": " + "; ".join(
-                f"{metric_text(metric, a)} versus {metric_text(metric, b)}"
-                for metric, (a, b) in zip(metrics, values)
-            ) + "."
-        metric = {"SHORTER_DURATION": "total_duration_min", "LESS_MEASURED_WALKING": "walking_distance_m",
-                  "FEWER_KNOWN_TRANSFERS": "transfers"}[reason.code]
-        if set(refs) != {ref(choice.centre_id, metric), ref(other_id, metric)}:
-            raise _RankingOutputError("invalid_comparison_evidence")
-        a, b = pair(metric)
-        if a >= b:
-            raise _RankingOutputError("false_comparative_claim")
-        return f"{metric_text(metric, a)} versus {other.centre_name}'s {metric_text(metric, b)}."
+    names = {centre_id: item.centre_name for centre_id, item in routes.items()}
 
     for choice in response.selected_centres:
         if choice.centre_id in rendered or choice.centre_id not in routes:
@@ -883,7 +805,8 @@ def _render_grounded_ranking(
         if choice.route_id != f"{choice.centre_id}:primary":
             continue
         try:
-            clauses = [render_reason(choice, reason) for reason in choice.reasons]
+            clauses = [_render_route_reason(choice.centre_id, reason, names, facts, profile.objectives)
+                       for reason in choice.reasons]
         except _RankingOutputError:
             continue
         rendered[choice.centre_id] = (choice, " ".join(clauses))
