@@ -19,6 +19,7 @@ from agents import location_agent
 from models.location_models import CentreLogistics, LocationDecision, LocationQuery, TravelEstimate
 from models.orchestration import ParsedRequest
 from services.activity_log import begin_activity_capture, end_activity_capture
+from test_location_grounded_reasoning import grounded_ranking
 
 
 def route(centre_id, minutes, walking=None, transfers=None, source="onemap"):
@@ -33,14 +34,7 @@ def route(centre_id, minutes, walking=None, transfers=None, source="onemap"):
 
 
 def ranking(ids, confidence=0.97):
-    return location_agent.CentreRanking(
-        selected_centres=[{
-            "centre_id": centre_id, "rank": index, "logistics_fit": 0.9,
-            "rationale": "Mock ranking grounded in route evidence.",
-        } for index, centre_id in enumerate(ids, start=1)],
-        reasoning="Original model reasoning.", confidence=confidence,
-        limitations=["Original model limitation."],
-    )
+    return grounded_ranking(ids, confidence)
 
 
 class LocationRankingFallbackTests(unittest.TestCase):
@@ -97,11 +91,13 @@ class LocationRankingFallbackTests(unittest.TestCase):
         result = self.rank()
         self.assertEqual(self.ids(result), ["other", "fastest"])
         self.assertEqual(result.confidence, 0.97)
-        self.assertEqual(result.reasoning, "Original model reasoning.")
-        self.assertEqual(result.limitations, ["Original model limitation."])
+        self.assertIn("Fixture other centre: Verified primary route: 10 min.", result.reasoning)
+        self.assertNotIn("Original model reasoning.", result.reasoning)
+        self.assertTrue(any("eight" in item for item in result.limitations))
+        self.assertTrue(any("not a calibrated probability" in item for item in result.limitations))
         self.llm.assert_called_once()
         self.model.with_structured_output.assert_called_once_with(
-            location_agent.CentreRanking, method="function_calling",
+            location_agent._GroundedRanking, method="function_calling", include_raw=True,
         )
         self.response.assert_called_once()
 
@@ -159,7 +155,7 @@ class LocationRankingFallbackTests(unittest.TestCase):
         result = self.rank(outcome=outcome)
         self.assert_fallback(result)
         self.assertEqual(outcome.confidence, 2.0)
-        self.assertEqual(outcome.limitations, ["Original model limitation."])
+        self.assertEqual(outcome.selected_centres[0].reasons[0].code, "PRIMARY_ROUTE")
 
     def test_invalid_ids_and_empty_selections_share_the_fallback_policy(self):
         for ids in (["unknown"], []):

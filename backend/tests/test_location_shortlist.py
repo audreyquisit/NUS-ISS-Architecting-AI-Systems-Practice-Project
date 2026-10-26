@@ -8,8 +8,9 @@ from unittest.mock import Mock, patch
 from langchain_core.runnables import RunnableLambda
 
 from agents import location_agent
-from models.location_models import CentreLogistics, LocationQuery, RankedCentre, TravelEstimate
+from models.location_models import CentreLogistics, LocationQuery, TravelEstimate
 from models.orchestration import ParsedRequest
+from test_location_grounded_reasoning import grounded_ranking
 
 
 def route(centre_id, minutes, walking=None, transfers=None, source="onemap"):
@@ -55,13 +56,7 @@ class LocationShortlistTests(unittest.TestCase):
         return [item.centre_id for item in items]
 
     def rank_with_mock(self, query, routes, selected_ids):
-        response = location_agent.CentreRanking(
-            selected_centres=[RankedCentre(
-                centre_id=centre_id, rank=index, logistics_fit=0.9,
-                rationale="Mock selection grounded in supplied route evidence.",
-            ) for index, centre_id in enumerate(selected_ids, start=1)],
-            reasoning="Offline ranking response.", confidence=0.9,
-        )
+        response = grounded_ranking(selected_ids, confidence=0.9)
         model_response = Mock(return_value=response)
         model = Mock()
         model.with_structured_output.return_value = RunnableLambda(model_response)
@@ -73,7 +68,7 @@ class LocationShortlistTests(unittest.TestCase):
             result = location_agent._rank_centres(query, self.intent, routes)
         self.llm.assert_called_once()
         model.with_structured_output.assert_called_once_with(
-            location_agent.CentreRanking, method="function_calling",
+            location_agent._GroundedRanking, method="function_calling", include_raw=True,
         )
         model_response.assert_called_once()
         payload = model_response.call_args.args[0]

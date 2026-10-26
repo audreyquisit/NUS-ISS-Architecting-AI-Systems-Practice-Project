@@ -11,6 +11,7 @@ from agents import location_agent
 from models.location_models import LocationDecision, LocationQuery, RankedCentre
 from models.orchestration import ParsedRequest
 from services.activity_log import begin_activity_capture, end_activity_capture
+from test_location_grounded_reasoning import grounded_ranking
 
 
 class LocationCandidateScopeTests(unittest.TestCase):
@@ -256,11 +257,11 @@ class LocationCandidateScopeTests(unittest.TestCase):
                 ranking = location_agent.CentreRanking(
                     selected_centres=[RankedCentre(
                         centre_id=f"{cluster}_00", rank=1, logistics_fit=0.9,
-                        rationale="Mock ranking grounded in supplied routes.",
+                        rationale="Verified primary route: 10 min.",
                     )], reasoning="Offline ranking response.", confidence=0.9,
                 )
                 intent_response = Mock(return_value=intent)
-                ranking_response = Mock(return_value=ranking)
+                ranking_response = Mock(return_value=grounded_ranking([f"{cluster}_00"], confidence=0.9))
                 model = Mock()
                 model.with_structured_output.side_effect = lambda schema, **_: RunnableLambda(
                     intent_response if schema is location_agent.LocationIntent
