@@ -1,7 +1,6 @@
 """Parse requests, route location first, run relevant workers, and verify outputs."""
 
 import json
-import math
 import operator
 import os
 import re
@@ -13,6 +12,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 from typing_extensions import Annotated, TypedDict
 
+from agents.location_grounding import _LocationGrounding, _reconcile_grounding, _usable_primary_routes
 from models.orchestration import (
     AgentResult,
     OrchestrationPlan,
@@ -31,6 +31,7 @@ class SharedState(TypedDict, total=False):
     parsed_request: dict
     tasks: list[PlannedTask]
     location_result: Optional[dict]
+    location_grounding: Optional[_LocationGrounding]
     agent_results: Annotated[list[dict], operator.add]
     verified_results: list[dict]
     final_recommendation: str
@@ -706,8 +707,8 @@ def location_worker(state: SharedState) -> dict[str, Any]:
     task = next(
         (item for item in state["tasks"] if item.agent == "location"), None)
     if task is None:
-        return {"location_result": None, "needs_location": False}
-    from agents.location_agent import MissingOriginError, LocationResolutionError, run
+        return {"location_result": None, "needs_location": False, "location_grounding": None}
+    from agents.location_agent import MissingOriginError, LocationResolutionError, _run_with_grounding
     from services.location_service import LocationServiceError
 
     task_text = _canonical_worker_task("location", state.get("parsed_request", {}))
@@ -722,8 +723,9 @@ def location_worker(state: SharedState) -> dict[str, Any]:
     if context_state.get("origin_source") in {"free_text_place", "browser_current_location", "provided_coordinates"}:
         safe_context["state"]["origin_source"] = context_state["origin_source"]
     log_activity(state.get("request_id"), "agent.started", agent="location", task=task_text)
+    grounding = None
     try:
-        result = run({
+        result, grounding = _run_with_grounding({
             "request_id": state.get("request_id"),
             "request": state["user_request"],
             "task": task_text,
@@ -782,6 +784,7 @@ def location_worker(state: SharedState) -> dict[str, Any]:
     )
     return {
         "location_result": result,
+        "location_grounding": grounding,
         "needs_location": needs_location,
         "agent_results": [envelope],
     }
@@ -795,15 +798,33 @@ def reuse_location(state: SharedState) -> dict[str, Any]:
         .get("location_result")
     )
     if not isinstance(cached, dict) or not cached.get("selected_centres"):
-        return {"location_result": None, "location_reused": False}
+        return {"location_result": None, "location_reused": False, "location_grounding": None}
     return {
         "location_result": cached,
         "location_reused": True,
+        "location_grounding": None,
         "agent_results": [_result_envelope("location", cached)],
     }
 
 
+def _current_location_grounding(state: SharedState):
+    if (state.get("needs_location") or state.get("location_reused")
+            or state.get("parsed_request", {}).get("clarification_question")):
+        return None
+    return state.get("location_grounding")
+
+
 def expand_menu_search(state: SharedState) -> dict[str, Any]:
+    updates = _expand_menu_search(state)
+    updates["location_grounding"] = _reconcile_grounding(
+        _current_location_grounding(state),
+        updates.get("location_result", state.get("location_result") or {}),
+        state.get("request_id"), allow_supplements="location_result" in updates,
+    )
+    return updates
+
+
+def _expand_menu_search(state: SharedState) -> dict[str, Any]:
     """Preserve matching Location choices; expand only without an eligible match."""
     from services.activity_log import log_activity
 
@@ -848,39 +869,8 @@ def expand_menu_search(state: SharedState) -> dict[str, Any]:
         log_activity(request_id, "menu_search.skipped", reason="no_route_evidence")
         return {}
 
-    # Compare primary evidence before filtering usability: a bad duplicate must
-    # not disappear and leave a conflicting copy looking authoritative.
-    primary_by_id, route_by_id, ambiguous_ids = {}, {}, set()
-    excluded_evidence = False
-    for item in supplied_routes:
-        if not isinstance(item, dict) or not isinstance(item.get("centre_id"), str) or not item["centre_id"]:
-            excluded_evidence = True
-            continue
-        centre_id = item["centre_id"]
-        primary = {key: item.get(key) for key in (
-            "centre_id", "centre_name", "address", "coordinates", "route_id", "travel",
-        )}
-        if centre_id in primary_by_id and primary_by_id[centre_id] != primary:
-            ambiguous_ids.add(centre_id)
-        else:
-            primary_by_id.setdefault(centre_id, primary)
-            route_by_id.setdefault(centre_id, item)
-
-    routes = []
-    for centre_id, item in route_by_id.items():
-        travel = item.get("travel")
-        minutes = travel.get("total_duration_min") if isinstance(travel, dict) else None
-        if (
-            centre_id not in ambiguous_ids
-            and isinstance(travel, dict) and travel.get("source") == "onemap"
-            and travel.get("mode") in {"pt", "walk", "drive", "cycle"}
-            and isinstance(minutes, (int, float)) and not isinstance(minutes, bool)
-            and minutes >= 0 and (isinstance(minutes, int) or math.isfinite(minutes))
-        ):
-            routes.append(item)
-        else:
-            excluded_evidence = True
-    route_by_id = {item["centre_id"]: item for item in routes}
+    route_by_id, excluded_evidence = _usable_primary_routes(supplied_routes)
+    routes = list(route_by_id.values())
     if excluded_evidence:
         location["limitations"].append(
             "Ambiguous or unusable primary-route evidence was excluded from menu expansion."
@@ -1416,12 +1406,12 @@ def _canonical_worker_task(agent: str, parsed: dict[str, Any]) -> str:
     raise ValueError("Unrecognized worker agent.")
 
 
-def location_required_response(state: SharedState) -> dict[str, str]:
+def location_required_response(state: SharedState) -> dict[str, Any]:
     error = (state.get("location_result") or {}).get("error")
-    return {"final_recommendation": error or "Please share a starting location."}
+    return {"final_recommendation": error or "Please share a starting location.", "location_grounding": None}
 
 
-def respond_without_workers(state: SharedState) -> dict[str, str]:
+def respond_without_workers(state: SharedState) -> dict[str, Any]:
     intent = state.get("parsed_request", {}).get("intent")
     if intent == "smalltalk":
         reply = (
@@ -1430,12 +1420,12 @@ def respond_without_workers(state: SharedState) -> dict[str, str]:
         )
     else:
         reply = "I can help with hawker food recommendations. Tell me what you want and where to look."
-    return {"final_recommendation": reply}
+    return {"final_recommendation": reply, "location_grounding": None}
 
 
-def clarification_response(state: SharedState) -> dict[str, str]:
+def clarification_response(state: SharedState) -> dict[str, Any]:
     question = state.get("parsed_request", {}).get("clarification_question")
-    return {"final_recommendation": question or "Could you clarify what you mean?"}
+    return {"final_recommendation": question or "Could you clarify what you mean?", "location_grounding": None}
 
 
 def _queue_status_response(user_request: str, verified: list[dict[str, Any]]) -> Optional[str]:
@@ -1565,6 +1555,10 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
             replacement if item.get("agent") == "location" else item
             for item in agent_results
         ]
+    # Phase 5B.1 stops here. Keep the sidecar out of the current verifier call.
+    location_grounding = _reconcile_grounding(
+        _current_location_grounding(state), state.get("location_result") or {}, state.get("request_id"),
+    )
     verified = verify_results(
         agent_results, state.get("parsed_request", {})
     )
@@ -1582,7 +1576,7 @@ def verify_results_node(state: SharedState) -> dict[str, Any]:
             if item.get("agent") == "candidate_join"
         ), 0),
     )
-    return {"verified_results": verified}
+    return {"verified_results": verified, "location_grounding": location_grounding}
 
 
 def resolve_conflicts(state: SharedState) -> dict[str, Any]:

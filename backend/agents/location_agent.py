@@ -19,6 +19,7 @@ from openai import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
+from agents.location_grounding import _capture_grounding, _primary_facts, _reconcile_grounding
 from models.location_models import (
     CentreLogistics,
     LocationDecision,
@@ -756,14 +757,7 @@ def _primary_evidence(shortlist: List[CentreLogistics]):
     for item in shortlist:
         route_id = f"{item.centre_id}:primary"
         route_facts = []
-        for metric in ("total_duration_min", "walking_distance_m", "transfers", "mode", "walking_time_min"):
-            value = getattr(item.travel, metric)
-            if isinstance(value, (int, float)) and not math.isfinite(value):
-                value = None
-            provenance = ("unavailable" if value is None else
-                          "derived" if metric == "walking_time_min" else "measured")
-            fact = {"id": f"{route_id}:{metric}", "metric": metric,
-                    "value": value, "provenance": provenance}
+        for fact in _primary_facts(item.centre_id, item.travel.model_dump()):
             route_facts.append(fact)
             facts[fact["id"]] = {**fact, "centre_id": item.centre_id, "route_id": route_id}
         records.append({
@@ -803,6 +797,7 @@ def _validate_reading(reading: _PreferenceReading, profile: _PreferenceProfile, 
 def _render_grounded_ranking(
     response: _GroundedRanking, profile: _PreferenceProfile, query: LocationQuery,
     shortlist: List[CentreLogistics], facts: Dict[str, Any],
+    accepted_choices=None,
 ) -> CentreRanking:
     _validate_reading(response.preference_interpretation, profile, query)
     routes = {item.centre_id: item for item in shortlist}
@@ -908,6 +903,8 @@ def _render_grounded_ranking(
     selected = [RankedCentre(
         centre_id=centre, rank=index, logistics_fit=choice.logistics_fit, rationale=text,
     ) for index, (centre, (choice, text)) in enumerate(list(rendered.items())[:3], start=1)]
+    if accepted_choices is not None:
+        accepted_choices.extend(rendered[item.centre_id][0] for item in selected)
     limitations = [
         "Ranking compares at most eight eligible shortlisted primary routes, not every destination.",
         "Ranking confidence is model-reported, not a calibrated probability.",
@@ -936,6 +933,7 @@ def _deterministic_ranking(
     shortlist: List[CentreLogistics],
     reason: str,
     profile: Optional[_PreferenceProfile] = None,
+    policy_sink=None,
 ) -> CentreRanking:
     """Rank an already verified, time-eligible shortlist without model output.
 
@@ -976,6 +974,8 @@ def _deterministic_ranking(
 
     limitations.append("Fallback is limited to at most eight eligible shortlisted primary routes.")
     policy = ", then ".join(_METRIC_LABELS[metric] for metric in metrics)
+    if policy_sink is not None:
+        policy_sink.extend(metrics)
     return CentreRanking(
         selected_centres=[RankedCentre(
             centre_id=item.centre_id, rank=index, logistics_fit=0.5,
@@ -994,6 +994,7 @@ def _rank_centres(
     query: LocationQuery,
     intent: LocationIntent,
     logistics: List[CentreLogistics],
+    grounding_sink=None,
 ) -> CentreRanking:
     from services.activity_log import log_activity
 
@@ -1078,6 +1079,8 @@ def _rank_centres(
         )
         raise
     fallback_reason = None
+    accepted_choices = [] if grounding_sink is not None else None
+    fallback_order = [] if grounding_sink is not None else None
     try:
         result = chain.invoke({
             "request": query.request,
@@ -1101,7 +1104,9 @@ def _rank_centres(
         response = _GroundedRanking.model_validate(
             result.model_dump() if isinstance(result, _GroundedRanking) else result
         )
-        result = _render_grounded_ranking(response, profile, query, shortlist, facts)
+        result = _render_grounded_ranking(
+            response, profile, query, shortlist, facts, accepted_choices=accepted_choices,
+        )
     except (
         APIConnectionError, APIResponseValidationError, InternalServerError,
         RateLimitError, LengthFinishReasonError, TimeoutError, ConnectionError,
@@ -1112,7 +1117,12 @@ def _rank_centres(
             request_id, "location.centre_ranking.failed",
             model=model_name, error_type=fallback_reason, llm_called=True,
         )
-        result = _deterministic_ranking(query, intent, shortlist, fallback_reason, profile)
+        if grounding_sink is None:
+            result = _deterministic_ranking(query, intent, shortlist, fallback_reason, profile)
+        else:
+            result = _deterministic_ranking(
+                query, intent, shortlist, fallback_reason, profile, policy_sink=fallback_order,
+            )
     except Exception as error:
         log_activity(
             request_id, "location.centre_ranking.failed",
@@ -1121,6 +1131,14 @@ def _rank_centres(
             llm_called=True,
         )
         raise
+    if grounding_sink is not None:
+        # Capture accepted structured choices/facts, not their rendered prose.
+        # Outside model-error recovery: private-contract bugs must propagate.
+        grounding_sink.append(_capture_grounding(
+            query, shortlist, result,
+            choices={item.centre_id: item for item in accepted_choices} if fallback_reason is None else None,
+            facts=facts, fallback_reason=fallback_reason, fallback_order=fallback_order,
+        ))
     completion_details = ({
         "ranking_source": "deterministic_fallback", "fallback_reason": fallback_reason,
     } if fallback_reason else {})
@@ -1135,6 +1153,21 @@ def _rank_centres(
 
 
 def run(value: Any) -> Dict[str, Any]:
+    """Public Location contract; private grounding is never attached to it."""
+    return _run(value)
+
+
+def _run_with_grounding(value: Any):
+    """One execution, with an immutable sidecar for the server's current request."""
+    captured = []
+    decision = _run(value, grounding_sink=captured)
+    bundle = captured[0] if captured else None
+    return decision, _reconcile_grounding(
+        bundle, decision, bundle.request_id if bundle is not None else None,
+    )
+
+
+def _run(value: Any, grounding_sink=None) -> Dict[str, Any]:
     """Interpret a location request, gather route evidence, and rank centres."""
     query = _normalise_query(value)
     from services.activity_log import log_activity
@@ -1467,7 +1500,8 @@ def run(value: Any) -> Dict[str, Any]:
         origin,
         allow_short_walk_fallback=allow_short_walk_fallback,
     )
-    ranking = _rank_centres(query, intent, logistics)
+    ranking = (_rank_centres(query, intent, logistics) if grounding_sink is None else
+               _rank_centres(query, intent, logistics, grounding_sink=grounding_sink))
     catalogue_ids = {centre["id"] for centre in catalogue}
     # The ranking model is restricted to catalogue IDs. This check protects
     # downstream workers consuming this response from model-generated centres.
