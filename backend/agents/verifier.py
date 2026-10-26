@@ -1,6 +1,7 @@
 """Programmatic checks applied to worker evidence before recommendation."""
 
 import math
+from collections import deque
 from copy import deepcopy
 from typing import Any
 
@@ -587,6 +588,29 @@ def _matching_menu_ids(request, approved_centres):
     return ids
 
 
+def _balanced_menu_candidates(candidates, centre_order, limit=30):
+    """Bound the join without letting a menu-rich centre erase other centres."""
+    groups, seen = {}, set()
+    for item in candidates:
+        if item["menu_item_id"] in seen:
+            continue
+        seen.add(item["menu_item_id"])
+        groups.setdefault(item["hawker_centre_id"], deque()).append(item)
+    order = list(dict.fromkeys([*centre_order, *groups]))
+    balanced = []
+    while len(balanced) < limit:
+        progressed = False
+        for centre in order:
+            if groups.get(centre):
+                balanced.append(groups[centre].popleft())
+                progressed = True
+                if len(balanced) == limit:
+                    break
+        if not progressed:
+            break
+    return balanced
+
+
 def verify_results(
     agent_results: list[dict[str, Any]], parsed_request: dict[str, Any], *,
     location_grounding=None, request_id=None, location_reused=False,
@@ -709,7 +733,8 @@ def _verify_results(agent_results, parsed_request, *, location_grounding, reques
                 continue
             combined["supporting_agents"] = [agent for agent, _ in candidate_maps]
             joined.append(combined)
-        joined = joined[:30]
+        centre_order = [item["centre_id"] for item in next(iter(locations.values()), {}).get("payload", {}).get("selected_centres", [])]
+        joined = _balanced_menu_candidates(joined, centre_order)
         joined_result = {
             "agent": "candidate_join",
             "verified": True,

@@ -48,8 +48,8 @@ class RecommendationContextTests(unittest.TestCase):
         self.assertEqual(context.confidence_basis, "model_reported_uncalibrated")
         self.assertIn("not calibrated", " ".join(context.limitations))
         self.assertEqual(context.location_reasoning, public[0]["payload"]["reasoning"])
-        # The current join order is intentionally preserved, including its mismatch with Location order.
-        self.assertEqual([item.centre_id for item in context.eligible_menu_items], ["fast", "walk"])
+        # The bounded join now starts in verified Location order.
+        self.assertEqual([item.centre_id for item in context.eligible_menu_items], ["walk", "fast"])
         self.case.fixture.response.assert_called_once()
         self.case.fixture.collect.assert_called_once()
 
@@ -298,7 +298,8 @@ class RecommendationContextTests(unittest.TestCase):
         self.assertIsInstance(context, _RecommendationContext)
         self.assertEqual(context.approved_centre_ids, ("walk", "fast"))
         self.assertIsNone(result["location_grounding"])
-        recommend.assert_called_once_with("Find food nearby", result["verified_results"], parsed_request=self.case.request)
+        recommend.assert_called_once_with("Find food nearby", result["verified_results"], parsed_request=self.case.request,
+            verified_context=context, request_id=self.case.fixture.query.request_id)
         self.case.fixture.response.assert_called_once()
         self.case.fixture.collect.assert_called_once()
         with patch("dotenv.load_dotenv", return_value=False):

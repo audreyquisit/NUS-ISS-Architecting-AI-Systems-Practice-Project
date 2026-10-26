@@ -1842,6 +1842,8 @@ def synthesizer(state: SharedState) -> dict[str, str]:
         state["user_request"],
         verified,
         parsed_request=parsed,
+        verified_context=state.get("recommendation_context"),
+        request_id=state.get("request_id"),
     )
     joined = next((
         item for item in verified
