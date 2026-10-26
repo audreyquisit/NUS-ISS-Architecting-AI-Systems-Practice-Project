@@ -5,6 +5,7 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
+import httpx
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
@@ -101,6 +102,62 @@ class GroundedRecommendationTests(unittest.TestCase):
     def test_programming_errors_still_propagate(self):
         with self.assertRaisesRegex(TypeError, "Implementation bug"):
             self.synthesize(self.state(), error=TypeError("Implementation bug"))
+
+    def test_sdk_content_filter_uses_fallback_through_real_graph_and_chat_api(self):
+        from langchain_openai import ChatOpenAI
+
+        with patch("dotenv.load_dotenv", return_value=False):
+            import main
+
+        requests = []
+
+        def filtered_response(request):
+            requests.append(request)
+            return httpx.Response(200, json={
+                "id": "chatcmpl-offline-filtered", "object": "chat.completion",
+                "created": 1, "model": "gpt-4o", "choices": [{
+                    "index": 0, "message": {"role": "assistant", "content": None},
+                    "finish_reason": "content_filter",
+                }],
+            })
+
+        tasks = [PlannedTask(agent="location", task="Find centres"),
+                 PlannedTask(agent="dietary", task="Find food")]
+        with httpx.Client(transport=httpx.MockTransport(filtered_response), trust_env=False) as client:
+            # Keep the real SDK and structured-output parser; intercept only HTTP.
+            def model_factory(**kwargs):
+                return ChatOpenAI(http_client=client, **kwargs)
+
+            with patch.dict("os.environ", {"OPENAI_API_KEY": "offline-test-key"}), \
+                 patch.object(recommendation_agent, "ChatOpenAI", side_effect=model_factory) as construct, \
+                 patch.object(orchestrator, "build_model", return_value={}), \
+                 patch.object(orchestrator, "parse_request", return_value={
+                     "parsed_request": self.case.request, "tasks": tasks}), \
+                 patch("agents.dietary_agent.run", return_value=self.case.worker()), \
+                 patch.object(main, "_resolve_session", side_effect=lambda payload: (None, payload)), \
+                 patch.object(main, "save_trace") as trace:
+                api = main.app.test_client().post("/api/chat", json={"message": "Find food nearby"})
+
+        self.assertEqual(api.status_code, 200)
+        body = api.get_json()
+        reply = body["reply"]
+        self.assertIn("deterministic eligible selections", reply)
+        self.assertLess(reply.index("1. Fixture walk"), reply.index("2. Fixture fast"))
+        self.assertIn("15 min by public transport", reply)
+        self.assertIn("Approximate walking time: 1 min", reply)
+        self.assertIn("Location model-ranked selection", reply)
+        self.assertIn("Chicken rice", reply)
+        for unsupported in ("Fixture direct", "Fixture unknown", "zero walking", "wheelchair accessible", "fully sheltered"):
+            self.assertNotIn(unsupported, reply)
+        joined = next(row for row in body["verified_results"] if row["agent"] == "candidate_join")
+        self.assertEqual({row["menu_item_id"] for row in joined["candidates"]}, {"walk:rice", "fast:rice"})
+        self.assertNotIn("recommendation_context", json.dumps(body))
+        self.assertEqual(trace.call_args.args[0]["status"], "success")
+        construct.assert_called_once()
+        self.assertEqual(construct.call_args.kwargs["max_retries"], 0)
+        self.assertEqual(len(requests), 1)  # No SDK retry, model repair or second invocation.
+        self.case.fixture.response.assert_called_once()
+        self.case.fixture.collect.assert_called_once()
 
     def test_empty_approval_or_food_join_never_invokes_model(self):
         decision, bundle = self.case.execute()

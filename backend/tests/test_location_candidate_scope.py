@@ -1,5 +1,6 @@
 """Offline candidate-scope regressions; no report or persistence hooks."""
 
+import json
 import os
 import unittest
 from contextlib import ExitStack
@@ -226,6 +227,43 @@ class LocationCandidateScopeTests(unittest.TestCase):
                 self.assertEqual(events[2]["centres_submitted"], 30)
                 self.assertEqual(events[2]["routes_with_duration"], 30)
                 self.assertFalse(events[2]["llm_called"])
+
+    def test_routing_activity_payloads_and_logged_text_omit_origin_coordinates(self):
+        self._set_origin(1.31234567, 103.87654321)
+        ranking = Mock(return_value=grounded_ranking(["origin_00"]))
+        model = Mock()
+        model.with_structured_output.return_value = RunnableLambda(ranking)
+        self.llm.side_effect = None
+        self.llm.return_value = model
+        token, events = begin_activity_capture()
+        try:
+            with patch("services.activity_log._LOGGER.info") as logged, \
+                 patch.object(location_agent, "is_singapore_location", return_value=True), \
+                 patch.object(location_agent, "reverse_geocode_location", return_value=None):
+                decision = LocationDecision.model_validate(location_agent.run(self._query(
+                    "Find food nearby", user_location=self.origin,
+                )))
+        finally:
+            end_activity_capture(token)
+
+        self.assertEqual(decision.origin.model_dump(), self.origin)  # Public contract is unchanged.
+        self.assertEqual(len(decision.logistics), 30)
+        self.assertEqual(self.route.call_count, 30)
+        for event in events:
+            self.assertEqual(event["request_id"], self.request_id)
+            self.assertNotIn("origin_coordinates", event)
+        started = next(event for event in events if event["event"] == "location.onemap_routes.started")
+        self.assertFalse(started["origin_coordinates_logged"])
+        self.assertEqual(started["provider"], "OneMap Routing")
+        self.assertEqual(started["route_candidates"], 30)
+        self.assertEqual(started["requested_mode"], "pt")
+        self.assertFalse(started["destination_coordinates_logged"])
+        for text in (json.dumps(events), "\n".join(call.args[0] for call in logged.call_args_list)):
+            self.assertNotIn("1.31234567", text)
+            self.assertNotIn("103.87654321", text)
+        logged.assert_called()
+        ranking.assert_called_once()
+        self.llm.assert_called_once()
 
     def test_standalone_endpoint_preserves_contract_and_model_call_count(self):
         # Importing main normally loads .env; this isolated endpoint test must

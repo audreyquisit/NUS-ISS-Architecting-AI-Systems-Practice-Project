@@ -588,7 +588,7 @@ def _collect_logistics(
     log_activity(
         request_id, "location.onemap_routes.started",
         provider="OneMap Routing",
-        origin_coordinates={"lat": start["lat"], "lng": start["lng"]},
+        origin_coordinates_logged=False,
         route_candidates=len(all_centres),
         requested_mode=query.travel_mode or "pt",
         destination_coordinates_logged=False,

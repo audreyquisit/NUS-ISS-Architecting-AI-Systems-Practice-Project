@@ -6,7 +6,7 @@ from typing import Optional
 from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from openai import (APIConnectionError, APIResponseValidationError, InternalServerError,
+from openai import (APIConnectionError, APIResponseValidationError, ContentFilterFinishReasonError, InternalServerError,
                     LengthFinishReasonError, RateLimitError)
 from pydantic import ValidationError
 
@@ -62,7 +62,7 @@ def run(user_request: str, agent_results: list, parsed_request: Optional[dict] =
         plan = _RecommendationPlan.model_validate(
             result.model_dump() if isinstance(result, _RecommendationPlan) else result)
         plan = _validate_plan(plan, context, rows, request)
-    except (APIConnectionError, APIResponseValidationError, InternalServerError, RateLimitError,
+    except (APIConnectionError, APIResponseValidationError, ContentFilterFinishReasonError, InternalServerError, RateLimitError,
             LengthFinishReasonError, TimeoutError, ConnectionError, OutputParserException,
             json.JSONDecodeError, ValidationError, _InvalidPlan):
         plan, fallback = _fallback_plan(context, rows), True
