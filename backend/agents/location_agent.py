@@ -97,8 +97,12 @@ class _PreferenceProfile(_PrivateRankingModel):
 
 class _PreferenceReading(_PrivateRankingModel):
     focus: Literal["duration", "walking", "transfers", "balanced", "unspecified"] = "unspecified"
-    walking: Literal["minimize", "flexible", "unspecified"] = "unspecified"
-    source_quote: str = Field(default="", max_length=160)
+    walking: Literal["minimize", "flexible", "unspecified"] = Field(default="unspecified", description=(
+        "Use minimize when structured objectives include walking_distance_m; flexible is walking tolerance, "
+        "not willingness to spend extra travel time to reduce walking. Otherwise leave unspecified without evidence."))
+    source_quote: str = Field(default="", max_length=160, description=(
+        "Verbatim substring of the current user message or an exact preference_profile label; otherwise empty. "
+        "Never invent a quote from field names, proximity_preference, or explanatory paraphrases."))
 
 
 class _RouteReason(_PrivateRankingModel):
@@ -106,8 +110,11 @@ class _RouteReason(_PrivateRankingModel):
         "PRIMARY_ROUTE", "SHORTER_DURATION", "LESS_MEASURED_WALKING",
         "FEWER_KNOWN_TRANSFERS", "BALANCED_TRADEOFF", "METRIC_UNAVAILABLE",
     ]
-    evidence_refs: List[Annotated[str, Field(max_length=240)]] = Field(min_length=1, max_length=6)
-    comparison_centre_id: Optional[str] = Field(default=None, max_length=160)
+    evidence_refs: List[Annotated[str, Field(max_length=240)]] = Field(min_length=1, max_length=6, description=(
+        "Exact supplied fact IDs. Comparative codes require each metric's fact for BOTH centres. "
+        "BALANCED_TRADEOFF requires duration and walking/transfer facts for BOTH centres (at least four IDs)."))
+    comparison_centre_id: Optional[str] = Field(default=None, max_length=160, description=(
+        "Distinct supplied comparison centre ID; naming it does not replace its required evidence_refs."))
 
 
 class _GroundedChoice(_PrivateRankingModel):
@@ -165,6 +172,11 @@ Use the authoritative preference_profile; its source precedence and hard constra
 override conflicting wording. Interpret qualitative wording in this SAME call: supply
 a short exact source_quote for walking tolerance inferred from the current message.
 Keep ordered objectives, permissive walking and unsupported requests distinct.
+If objectives include walking_distance_m, use walking=minimize, never flexible.
+Accepting extra travel minutes to reduce walking is walking minimization, not walking tolerance;
+focus=balanced can still justify a non-fastest route. Without supported walking-preference evidence, use
+walking=unspecified and an empty source_quote. Quotes must be verbatim user text
+or an exact preference_profile label, never invented text such as proximity_preference: convenient.
 Choose up to three centres in your preferred order from the supplied bounded shortlist.
 You may choose a justified non-fastest route for supported soft trade-offs. Do not
 blindly sort every request by duration. With no supported preference, prefer duration.
@@ -175,7 +187,11 @@ LESS_MEASURED_WALKING and FEWER_KNOWN_TRANSFERS cite that measured metric for
 the choice AND a distinct comparison centre; the choice must be strictly better.
 BALANCED_TRADEOFF cites duration and at least one walking/transfer pair: the choice
 must improve one metric and worsen another. METRIC_UNAVAILABLE cites unavailable
-facts of the chosen route. Comparisons apply only to named shortlisted centres,
+facts of the chosen route. For a comparison of A with B, cite BOTH A:primary:walking_distance_m
+and B:primary:walking_distance_m for LESS_MEASURED_WALKING. BALANCED_TRADEOFF
+also needs BOTH A:primary:total_duration_min and B:primary:total_duration_min.
+Replace A and B with actual supplied IDs; comparison_centre_id alone is insufficient.
+Comparisons apply only to named shortlisted centres,
 not all Singapore. Unknown is not zero; derived walking time is approximate.
 No alternative itineraries are selectable. Do not invent accessibility, shelter,
 weather, exact walking time or unsupported facts. Confidence is a bounded subjective

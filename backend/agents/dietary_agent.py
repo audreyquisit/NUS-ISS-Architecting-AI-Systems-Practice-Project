@@ -184,9 +184,10 @@ def run(
             final_dietary.append(item)
 
     final_cuisine = list(cuisine_preferences or [])
-    for item in inferred_cuisine:
-        if item not in final_cuisine:
-            final_cuisine.append(item)
+    # Structured cuisine/dish filters take precedence over guessed categories.
+    # Keep legacy inference only when neither filter was supplied.
+    if not final_cuisine and not menu_item_preferences:
+        final_cuisine.extend(inferred_cuisine)
 
     # Pull source-backed candidates first. Dietary suitability is decided below.
     stalls = find_dietary_stalls(
