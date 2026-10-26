@@ -1792,13 +1792,12 @@ def synthesizer(state: SharedState) -> dict[str, str]:
                     )
                 }
 
-            # A failed mixed food/queue join must not trigger either a queue-only
-            # answer or an additional model call to invent eligible food.
-            if _requests_queue_data(state.get("user_request", "")) and has_food_filter:
-                return {"final_recommendation": (
-                    "I couldn't verify food options matching your request in the approved centres. "
-                    "Queue estimates alone cannot establish food eligibility; the menu catalogue is partial."
-                )}
+            # Missing food eligibility and expansion proof require no model call
+            # and establish neither a route horizon nor exhaustive menu coverage.
+            return {"final_recommendation": (
+                "I couldn't verify food options matching your request in the approved centres. "
+                "The menu catalogue is partial; this does not establish that matching food is unavailable elsewhere."
+            )}
 
     from agents.recommendation_agent import run
 

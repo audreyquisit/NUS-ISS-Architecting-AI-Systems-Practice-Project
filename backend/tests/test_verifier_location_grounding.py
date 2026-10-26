@@ -225,6 +225,119 @@ class VerifierLocationGroundingTests(unittest.TestCase):
         self.assertIn("hard travel-time limit", result["final_recommendation"])
         self.fixture.response.assert_called_once()  # Prior turn only; no fresh ranking on reuse.
 
+    def test_actual_no_match_expansion_reused_in_graph_has_no_current_travel_claims(self):
+        decision, bundle = self.execute()
+        for key in self.fixture.matches:
+            self.fixture.matches[key] = []
+        prior = self.fixture.state(decision, bundle)
+        prior.update(orchestrator.expand_menu_search(prior))
+        self.assertEqual(prior["location_result"]["search_expansion"]["outcome"], "no_match_in_routed_pool")
+        self.assertEqual(prior["location_result"]["search_expansion"]["route_checked_centre_count"], 4)
+        request = {**self.request, "dietary_preferences": ["vegetarian"]}
+        tasks = [PlannedTask(agent="dietary", task="Find food"), PlannedTask(agent="queue", task="Check queues")]
+        queue = self.queue_worker()
+        for message in ("Find vegetarian food", "Find vegetarian food and compare queues"):
+            with self.subTest(message=message), \
+                 patch.object(orchestrator, "build_model", return_value={}), \
+                 patch.object(orchestrator, "parse_request", return_value={"parsed_request": request, "tasks": tasks}), \
+                 patch("agents.dietary_agent.run", return_value=self.worker()), \
+                 patch("agents.queue_agent.run", return_value=queue), \
+                 patch("agents.recommendation_agent.run", side_effect=AssertionError("No additional model call")):
+                result = orchestrator.build_workflow().invoke({"request_id": "reused-expansion",
+                    "user_request": message, "tasks": [], "agent_results": [],
+                    "conversation_context": {"state": {"location_result": prior["location_result"]}}})
+                location = next(row["payload"] for row in result["verified_results"] if row["agent"] == "location")
+                self.assertTrue(result["location_reused"])
+                self.assertEqual(location["logistics"], [])
+                self.assertEqual(location["search_expansion"], {})
+                self.assertEqual(self.joined(result["verified_results"]), [])
+                reply = result["final_recommendation"]
+                self.assertIn("couldn't verify food options", reply)
+                for unsupported in ("route-checked", "30 minutes", "Fixture origin", "SIMULATED QUEUE DATA"):
+                    self.assertNotIn(unsupported, reply)
+                self.assertIsNone(result["location_grounding"])
+                self.assertNotIn(bundle.execution_id, json.dumps(result["verified_results"]))
+                LocationDecision.model_validate({key: location[key] for key in LocationDecision.model_fields if key in location})
+        self.fixture.response.assert_called_once()  # Prior turn only.
+        self.fixture.collect.assert_called_once()
+
+    def test_farther_expansion_requires_current_route_support(self):
+        decision, bundle = self.execute()
+        self.menu[2]["menu_item_name"] = "Exclusive dish"
+        self.fixture.matches["walk"] = self.fixture.matches["fast"] = self.fixture.matches["unknown"] = []
+        self.route(decision, "direct")["travel"]["total_duration_min"] = 40
+        prior = self.fixture.state(decision, bundle)
+        prior["parsed_request"]["menu_item_preferences"] = ["Exclusive dish"]
+        prior.update(orchestrator.expand_menu_search(prior))
+        request = prior["parsed_request"]
+        for kind in ("fresh", "reused", "catalogue", "missing_routes", "missing_farther_route"):
+            with self.subTest(kind=kind):
+                changed = copy.deepcopy(prior["location_result"])
+                current_request = dict(request)
+                if kind == "missing_routes":
+                    changed["logistics"] = []
+                elif kind == "missing_farther_route":
+                    changed["logistics"] = [row for row in changed["logistics"] if row["centre_id"] != "direct"]
+                elif kind == "catalogue":
+                    current_request["search_scope_mode"] = "global"
+                results = self.verify(changed, prior["location_grounding"], request=current_request,
+                    reused=kind == "reused", workers=[self.worker()])
+                location = results[0]["payload"]
+                self.assertEqual(self.joined(results), [])
+                with patch("agents.recommendation_agent.run", side_effect=AssertionError("No additional model call")):
+                    reply = orchestrator.synthesizer({"parsed_request": current_request,
+                        "user_request": "Find Exclusive dish", "verified_results": results})["final_recommendation"]
+                if kind == "fresh":
+                    self.assertEqual(location["search_expansion"]["outcome"], "farther_match_requires_approval")
+                    self.assertIn("Fixture direct", reply)
+                    self.assertIn("40 minutes", reply)
+                    self.assertIn("Would you like", reply)
+                else:
+                    self.assertEqual(location["search_expansion"], {})
+                    self.assertIn("couldn't verify food options", reply)
+                    for unsupported in ("within 30", "40 minutes", "nearest catalogue match"):
+                        self.assertNotIn(unsupported, reply)
+        self.fixture.response.assert_called_once()
+        self.fixture.collect.assert_called_once()
+
+    def test_fresh_no_match_expansion_counts_only_surviving_verified_routes(self):
+        decision, bundle = self.execute()
+        for key in self.fixture.matches:
+            self.fixture.matches[key] = []
+        state = self.fixture.state(decision, bundle)
+        state["parsed_request"]["menu_item_preferences"] = ["Unavailable dish"]
+        state.update(orchestrator.expand_menu_search(state))
+        for remove_route in (False, True):
+            with self.subTest(remove_route=remove_route):
+                changed = copy.deepcopy(state["location_result"])
+                if remove_route:
+                    self.route(changed, "direct")["travel"]["source"] = "unavailable"
+                results = self.verify(changed, state["location_grounding"], request=state["parsed_request"], workers=[self.worker()])
+                count = 3 if remove_route else 4
+                self.assertEqual(results[0]["payload"]["search_expansion"]["route_checked_centre_count"], count)
+                self.assertEqual(self.joined(results), [])
+                with patch("agents.recommendation_agent.run", side_effect=AssertionError("No additional model call")):
+                    reply = orchestrator.synthesizer({"parsed_request": state["parsed_request"],
+                        "user_request": "Find Unavailable dish", "verified_results": results})["final_recommendation"]
+                self.assertIn(f"{count} route-checked centres within 30 minutes", reply)
+
+    def test_nontravel_dietary_limitation_survives_without_cached_travel_metadata(self):
+        decision, _ = self.execute()
+        decision["search_expansion"] = {"outcome": "dietary_verification_unavailable",
+            "route_checked_centre_count": 4, "search_horizon_min": 30}
+        for diets in (["vegetarian"], []):
+            with self.subTest(diets=diets):
+                request = {**self.request, "dietary_preferences": diets, "menu_item_preferences": ["Unavailable dish"]}
+                results = self.verify(decision, reused=True, request=request, workers=[self.worker()])
+                self.assertEqual(results[0]["payload"]["search_expansion"],
+                    {"outcome": "dietary_verification_unavailable"} if diets else {})
+                with patch("agents.recommendation_agent.run", side_effect=AssertionError("No additional model call")):
+                    reply = orchestrator.synthesizer({"parsed_request": request,
+                        "user_request": "Find food", "verified_results": results})["final_recommendation"]
+                self.assertNotIn("route-checked", reply)
+                self.assertNotIn("30 minutes", reply)
+                self.assertIn("can't verify that dietary restriction" if diets else "couldn't verify food options", reply)
+
     def test_valid_model_selection_preserves_nonfastest_order_rationale_fit_and_confidence(self):
         self.fixture.response.return_value.selected_centres[0].reasons = [comparative_reason(
             "walk", "direct", "BALANCED_TRADEOFF", ["total_duration_min", "walking_distance_m"],

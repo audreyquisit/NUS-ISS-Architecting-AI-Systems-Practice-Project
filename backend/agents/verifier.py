@@ -215,6 +215,7 @@ def _verified_location(result: dict[str, Any], parsed_request=None, *, grounding
         for key in ("initial_centres", "additional_centres", "farther_matches"):
             summaries = expansion.get(key)
             if not isinstance(summaries, list):
+                expansion[key] = []
                 continue
             valid_summaries = []
             for summary in summaries:
@@ -235,6 +236,23 @@ def _verified_location(result: dict[str, Any], parsed_request=None, *, grounding
                                             "farther_match_requires_approval", "no_match_in_routed_pool",
                                             "dietary_verification_unavailable"}:
             expansion = {}
+        if not routes or not valid_horizon:
+            # Catalogue identity and cached expansion metadata are not current
+            # travel proof. Only a still-applicable non-travel limitation survives.
+            dietary_unavailable = (expansion.get("outcome") == "dietary_verification_unavailable"
+                and any(isinstance(diet, str) and diet in VERIFIABLE_DIETS and diet not in INFERRED_DIETS
+                        for diet in [*request.get("dietary_preferences", []), request.get("dietary_preference")]))
+            expansion = {"outcome": "dietary_verification_unavailable"} if dietary_unavailable else {}
+        elif expansion:
+            within_horizon = [item["travel"]["total_duration_min"] for item in routes.values()
+                              if horizon is None or item["travel"]["total_duration_min"] <= horizon]
+            if ((expansion["outcome"] == "farther_match_requires_approval" and not expansion.get("farther_matches"))
+                    or (expansion["outcome"] == "no_match_in_routed_pool" and not within_horizon)):
+                expansion = {}
+            else:
+                expansion["route_checked_centre_count"] = len(within_horizon)
+                expansion["route_candidate_pool_size"] = len(routes)
+                expansion["route_time_min_range"] = [min(within_horizon), max(within_horizon)] if within_horizon else []
         checked["search_expansion"] = expansion
         checked["limitations"].append("Menu coverage is partial; verification does not establish exhaustive dish availability.")
     removed = len(proposed) - len(selected)
