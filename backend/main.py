@@ -353,7 +353,9 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
     raw_message = payload.get("message")
     if raw_message is not None and not isinstance(raw_message, str):
         return jsonify({"error": "Message must be text."}), 400
@@ -522,7 +524,9 @@ def menu_lookup():
 @app.route("/api/location", methods=["POST"])
 def evaluate_location():
     """Expose the Location & Logistics worker directly for diagnostics."""
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
     if "request" not in payload:
         payload["request"] = payload.get("message", payload.get("task", ""))
     if not isinstance(payload.get("request"), str):
