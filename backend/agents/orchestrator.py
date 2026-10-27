@@ -286,14 +286,24 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
             request.target_centre_text = next(
                 centre["name"] for centre in catalogue if centre["id"] == centre_id
             )
-    if re.search(r"\b(other|different|another)\b", current_message, re.I):
+    if _requests_alternative_options(current_message, request):
         prior_ids = session_state.get("previous_menu_item_ids", [])
-        if prior_ids:
-            request.excluded_menu_item_ids = list(dict.fromkeys(prior_ids))
         if re.search(r"\bother\s+food\s+options?\b", current_message, re.I):
             request.menu_item_preferences = []
             request.stall_name_preferences = []
             request.cuisine_preferences = []
+        if prior_ids:
+            from services.hawker_service import find_dietary_stalls
+
+            relevant_ids = {item["menu_item_id"] for item in find_dietary_stalls(
+                menu_item_preferences=request.menu_item_preferences,
+                cuisine_preferences=request.cuisine_preferences,
+                stall_name_preferences=request.stall_name_preferences,
+            )}
+            request.excluded_menu_item_ids = list(dict.fromkeys([
+                *request.excluded_menu_item_ids,
+                *(item for item in prior_ids if item in relevant_ids),
+            ]))[:100]
     # Prevent the planner from turning a complete request into a needless
     # yes/no loop. A food-discovery request that names where to look is
     # actionable: the dietary worker returns area-wide candidates when no
@@ -357,6 +367,23 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     }
 
 
+def _requests_alternative_options(message: str, request: ParsedRequest) -> bool:
+    """Require an option noun, optionally qualified by a validated food phrase.
+
+    A new/independent search is not an instruction to avoid previous menu IDs.
+    This deliberately leaves less explicit paraphrases to the Planner.
+    """
+    if re.search(r"\b(?:new|independent)\b[^.!?;]{0,100}\bsearch\b", message, re.I):
+        return False
+    descriptions = ["food", *request.menu_item_preferences,
+                    *request.cuisine_preferences, *request.stall_name_preferences]
+    descriptor = "|".join(re.escape(value) for value in descriptions if value)
+    return bool(re.search(
+        rf"\b(?:another|other|different)\s+(?:(?:{descriptor})\s+)?(?:options?|recommendations?|dishes?|meals?|stalls?)\b",
+        message, re.I,
+    ))
+
+
 def _guard_travel_preferences(request: ParsedRequest, message: str, context: dict) -> None:
     """Reject only narrowly evidenced semantic errors; never parse a new tolerance.
 
@@ -375,6 +402,23 @@ def _guard_travel_preferences(request: ParsedRequest, message: str, context: dic
     def uncertain(field):
         if field not in request.uncertain_fields:
             request.uncertain_fields.append(field)
+
+    # Apply an unambiguous current override before the relative-minute guard
+    # inspects history. Do not match inside a double negation such as
+    # "I don't want no travel-time limit" or infer a general search reset.
+    unlimited = re.search(
+        r"(?:^|[;,.!?]|\bwith\b)\s*no\s+(?:travel[- ]time|journey[- ]time)\s+limit\b",
+        message, re.I,
+    )
+    if unlimited:
+        remaining = re.sub(relative, "", message, flags=re.I)
+        if re.search(r"\b(?:minutes?|mins?|hours?|hrs?|seconds?|secs?)\b|\d(?:min|hr)s?\b", remaining, re.I):
+            uncertain("max_travel_time_min")
+            request.clarification_question = "Should this search have a total travel-time limit, or no travel-time limit?"
+        else:
+            request.max_travel_time_min = None
+            request.field_sources.pop("max_travel_time_min", None)
+            request.uncertain_fields = [field for field in request.uncertain_fields if field != "max_travel_time_min"]
 
     if re.search(relative, message, re.I):
         uncertain("relative_travel_time_tolerance")

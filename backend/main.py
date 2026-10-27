@@ -141,6 +141,17 @@ def _session_state_patch(response: dict) -> dict:
     verified = verified if isinstance(verified, list) else []
     interpretation = location_data.get("intent_interpretation")
     interpretation = interpretation if isinstance(interpretation, dict) else {}
+    if response.get("error") or location_data.get("error") or any(
+        isinstance(item, dict) and item.get("agent") == "location"
+        and item.get("status") in {"error", "unavailable"} for item in verified
+    ):
+        return {}
+    completed_search = (
+        parsed.get("intent") == "food_discovery"
+        and not parsed.get("clarification_question")
+        and not response.get("needs_location")
+        and isinstance(location_data.get("selected_centres"), list)
+    )
 
     joined = next((
         item for item in verified
@@ -180,7 +191,20 @@ def _session_state_patch(response: dict) -> dict:
         if origin_source == "free_text_place":
             shortlist["origin_label"] = str(location_data.get("origin_label") or "")
         state["location_result"] = shortlist
-    return {key: value for key, value in state.items() if value not in (None, "", [], {})}
+    patch = {key: value for key, value in state.items() if value not in (None, "", [], {})}
+    if completed_search:
+        # A completed current result replaces these active fields, even when
+        # empty. Other callers still get the store's ordinary shallow merge.
+        # Place/origin continuity and historical conversation turns are separate.
+        patch.update({
+            "travel_mode": state["travel_mode"],
+            "max_travel_time_min": parsed.get("max_travel_time_min"),
+            "priorities": state["priorities"],
+            "previous_menu_item_ids": previous_ids,
+            "location_result": (shortlist if shortlist["selected_centres"] else
+                                {"selected_centres": [], "logistics": []}),
+        })
+    return patch
 
 
 def _resolve_session(payload: dict) -> tuple[Optional[str], dict]:
