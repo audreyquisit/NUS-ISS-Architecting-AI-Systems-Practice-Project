@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from openai import (
     APIConnectionError,
     APIResponseValidationError,
+    ContentFilterFinishReasonError,
     InternalServerError,
     LengthFinishReasonError,
     RateLimitError,
@@ -1048,7 +1049,7 @@ def _rank_centres(
         )
     except (
         APIConnectionError, APIResponseValidationError, InternalServerError,
-        RateLimitError, LengthFinishReasonError, TimeoutError, ConnectionError,
+        RateLimitError, LengthFinishReasonError, ContentFilterFinishReasonError, TimeoutError, ConnectionError,
         OutputParserException, json.JSONDecodeError, ValidationError, _RankingOutputError,
     ) as error:
         fallback_reason = str(error) if isinstance(error, _RankingOutputError) else type(error).__name__
@@ -1286,18 +1287,21 @@ def _run(value: Any, grounding_sink=None) -> Dict[str, Any]:
                 centre_id=centre["id"],
                 centre_ranking_llm_called=False,
             )
+            requires_route = query.max_travel_time_min is not None
             return LocationDecision(
-                selected_centres=[RankedCentre(
+                selected_centres=[] if requires_route else [RankedCentre(
                     centre_id=centre["id"], rank=1, logistics_fit=1.0,
                     rationale="This is the centre named in your current message.",
                 )],
                 logistics=[],
-                reasoning=(
+                reasoning=("No centre has measured route evidence within the stated travel-time limit."
+                    if requires_route else
                     f"You asked about {centre['name']}; this turn is centre-specific, "
                     "not a nearby-centre search."
                 ),
-                confidence=1.0,
-                limitations=[],
+                confidence=0.0 if requires_route else 1.0,
+                limitations=["A catalogue-only lookup cannot satisfy a hard travel-time limit without route evidence."]
+                if requires_route else [],
                 intent_interpretation={
                     **intent.model_dump(),
                     "target_centre_name": centre["name"],
@@ -1402,15 +1406,35 @@ def _run(value: Any, grounding_sink=None) -> Dict[str, Any]:
             selected_mode,
             request_id=request_id,
         )
-        travel = TravelEstimate.model_validate(route_data)
+        duration = route_data.get("total_duration_min")
+        valid_duration = (
+            isinstance(duration, (int, float)) and not isinstance(duration, bool)
+            and duration >= 0 and (isinstance(duration, int) or math.isfinite(duration))
+            and duration == int(duration)
+        )
         log_activity(
             request_id, "location.onemap_route.completed",
             provider="OneMap Routing",
             route_type="direct_to_named_centre",
             centre_id=target["id"],
-            route_available=travel.total_duration_min is not None,
+            route_available=valid_duration,
             llm_called=False,
         )
+        if query.max_travel_time_min is not None and (
+            not valid_duration or duration > query.max_travel_time_min
+        ):
+            return LocationDecision(
+                selected_centres=[], logistics=[], confidence=0.0,
+                reasoning="No centre has measured route evidence within the stated travel-time limit.",
+                limitations=["A missing, invalid, or over-limit route duration cannot satisfy the travel-time limit."],
+                origin={"lat": origin["lat"], "lng": origin["lng"]},
+                origin_label=origin.get("label"), origin_source=origin_source,
+                intent_interpretation={
+                    **intent.model_dump(), "target_centre_name": target["name"],
+                    "travel_mode": selected_mode,
+                },
+            ).model_dump(mode="json")
+        travel = TravelEstimate.model_validate(route_data)
         logistics = [CentreLogistics(
             centre_id=target["id"], centre_name=target["name"],
             address=target["address"],
