@@ -184,7 +184,7 @@ For greetings or unrelated requests, use intent `smalltalk` or `other` and no ta
     })
     request, queue_intent = _normalize_queue_intent(plan.request)
     request = _force_food_request_intent(request, current_message, context)
-    request = _force_queue_request(request, current_message)
+    request = _force_queue_request(request, current_message, context)
     queue_intent = queue_intent or _requests_queue_data(current_message)
     allowed_sources = {
         "current_message", "conversation_context", "form_input", "inferred"
@@ -638,12 +638,50 @@ def _requests_queue_data(message: str) -> bool:
     ))
 
 
+def _supports_food_intent_override(message: str, context: dict) -> bool:
+    """Require a food action or grounded status/follow-up request, not a keyword."""
+    if re.search(r"\b(?:definition of|meaning of|define|explain (?:the )?(?:word|term))\b"
+                 r"|\bwhat (?:does|do) .{0,100} mean\b", message, re.I):
+        return False
+    food_terms = r"\b(?:food|hawker|meal|eat|dish|stall|menu|rice|noodles?|prata|laksa|halal|vegetarian|vegan)\b"
+    action = re.search(r"\b(?:find|recommend|search|look for|show|i want|i would like|where can i eat)\b", message, re.I)
+    if action and re.search(food_terms, message, re.I):
+        return True
+    status = re.search(r"\b(?:how (?:are|is|long)|check|compare|find|show)\b", message, re.I)
+    if status and (_requests_queue_data(message) or re.search(r"\b(?:weather|rain)\b", message, re.I)):
+        if re.search(food_terms, message, re.I):
+            return True
+        from agents.location_agent import _explicit_centre_target
+        from services.location_service import load_hawker_centres
+        from services.hawker_service import _normalise
+        catalogue = load_hawker_centres()
+        if _explicit_centre_target(message, catalogue):
+            return True
+        # Recognize familiar catalogue labels such as "Chinatown Complex"
+        # without granting destination identity or changing Location matching.
+        text = f" {_normalise(message)} "
+        for centre in catalogue:
+            for label in re.findall(r"\(([^)]*)\)", centre["name"]):
+                alias = _normalise(re.sub(r"\s+market$", "", label, flags=re.I))
+                if len(alias.split()) >= 2 and f" {alias} " in text:
+                    return True
+        if re.search(r"\b(?:there|those|that|these|same|them|it)\b", message, re.I) and any(
+            isinstance(turn, dict) and turn.get("role") == "user"
+            and re.search(food_terms, str(turn.get("content", "")), re.I)
+            for turn in context.get("turns", [])
+        ):
+            return True
+    # Reuse the existing narrow pending-offer/location-answer handling.
+    return (_current_turn_supports_food_action(message, context)
+            and not _current_turn_supports_food_action(message, {}))
+
+
 def _force_food_request_intent(
     request: ParsedRequest,
     message: str,
     context: Optional[dict] = None,
 ) -> ParsedRequest:
-    if request.intent in {"smalltalk", "other"} and _current_turn_supports_food_action(
+    if request.intent in {"smalltalk", "other"} and _supports_food_intent_override(
         message,
         context or {},
     ):
@@ -651,9 +689,9 @@ def _force_food_request_intent(
     return request
 
 
-def _force_queue_request(request: ParsedRequest, message: str) -> ParsedRequest:
-    if _requests_queue_data(message) and request.intent in {"smalltalk", "other"}:
-        return request.model_copy(update={"intent": "food_discovery"})
+def _force_queue_request(request: ParsedRequest, message: str, context: Optional[dict] = None) -> ParsedRequest:
+    if _requests_queue_data(message):
+        return _force_food_request_intent(request, message, context)
     return request
 
 
@@ -1601,12 +1639,20 @@ def _queue_status_response(user_request: str, verified: list[dict[str, Any]],
         isinstance(item, dict) and "google_places" in item.get("data_sources", [])
         for item in queue_result.get("evidence", [])
     )
+    simulated_used = any(item.get("source") in {"synthetic_queue_mock", "mock_queue_feed"}
+                         for item in queue_candidates) or any(
+        isinstance(item, dict) and any(source in {"synthetic_queue_mock", "mock_queue_feed"}
+                                      for source in item.get("data_sources", []))
+        for item in queue_result.get("evidence", [])
+    )
     unavailable_reply = (
         "Google Places does not provide actual queue or wait-time data. "
         "No eligible place-level proxy remains for this request; no stall-specific wait is verified."
         if google_requested else
         "I couldn't find queue estimates for the route-shortlisted centres. "
         "The queue feed is simulated demo data, not a live service."
+        if simulated_used else
+        "I couldn't find queue estimates for the selected centres. No verified provider evidence is available."
     )
     request = parsed_request or {}
     stall_preferences = request.get("stall_name_preferences", [])

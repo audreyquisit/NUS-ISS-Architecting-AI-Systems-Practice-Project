@@ -12,6 +12,12 @@ GOOGLE_PLACES_FIELD_MASK = (
 )
 
 
+class _GoogleQueueFeed(list):
+    """List-compatible, request-local provenance, including successful empty lookups."""
+
+    data_sources = ("google_places",)
+
+
 def _normalise_queue_value(value: Any, default: int = 10) -> int:
     try:
         numeric = float(value)
@@ -109,10 +115,7 @@ def get_live_queue_feed(task: Optional[str] = None) -> List[dict]:
         return get_mock_queue_feed(task)
 
     results = payload.get("places") or []
-    if not results:
-        return get_mock_queue_feed(task)
-
-    queue_records = []
+    queue_records = _GoogleQueueFeed()
     for result in results[:10]:
         display_name = result.get("displayName") or {}
         place_name = str(display_name.get("text") or "").strip()
