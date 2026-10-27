@@ -1,6 +1,7 @@
 import os
 import hmac
 import re
+import sqlite3
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -270,23 +271,32 @@ def _execute_and_trace(
             reply_chars=len(response.get("reply") or ""),
         )
         timestamp_end = _now_iso()
-        save_trace({
-            "request_id": request_id,
-            "timestamp_start": timestamp_start,
-            "timestamp_end": timestamp_end,
-            "timestamp": timestamp_end,
-            "status": "location_required" if response.get("needs_location") else "success",
-            "duration_ms": round((monotonic() - started) * 1000),
-            "metadata": {
-                "model": "gpt-4o",
-                "environment": os.getenv("APP_ENV", "development"),
-                "endpoint": endpoint,
-                "workflow_type": "smarthawker_orchestrator",
-            },
-            "user_query": message,
-            "events": events,
-            "response": response,
-        })
+        try:
+            save_trace({
+                "request_id": request_id,
+                "timestamp_start": timestamp_start,
+                "timestamp_end": timestamp_end,
+                "timestamp": timestamp_end,
+                "status": "location_required" if response.get("needs_location") else "success",
+                "duration_ms": round((monotonic() - started) * 1000),
+                "metadata": {
+                    "model": "gpt-4o",
+                    "environment": os.getenv("APP_ENV", "development"),
+                    "endpoint": endpoint,
+                    "workflow_type": "smarthawker_orchestrator",
+                },
+                "user_query": message,
+                "events": events,
+                "response": response,
+            })
+        except (sqlite3.ProgrammingError, sqlite3.InterfaceError,
+                sqlite3.IntegrityError, sqlite3.NotSupportedError):
+            raise
+        except (OSError, sqlite3.DatabaseError) as error:
+            # Optional persistence must not discard a successful response or
+            # prevent the independent session updates below. Never log payloads
+            # or provider/storage exception messages here.
+            log_activity(request_id, "trace.save_failed", error_type=type(error).__name__)
         _append_session_turn(
             session_id, "assistant", response.get("reply") or "", request_id,
         )
