@@ -1,6 +1,7 @@
 import os
 import hmac
 import re
+import sqlite3
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -140,6 +141,17 @@ def _session_state_patch(response: dict) -> dict:
     verified = verified if isinstance(verified, list) else []
     interpretation = location_data.get("intent_interpretation")
     interpretation = interpretation if isinstance(interpretation, dict) else {}
+    if response.get("error") or location_data.get("error") or any(
+        isinstance(item, dict) and item.get("agent") == "location"
+        and item.get("status") in {"error", "unavailable"} for item in verified
+    ):
+        return {}
+    completed_search = (
+        parsed.get("intent") == "food_discovery"
+        and not parsed.get("clarification_question")
+        and not response.get("needs_location")
+        and isinstance(location_data.get("selected_centres"), list)
+    )
 
     joined = next((
         item for item in verified
@@ -179,7 +191,20 @@ def _session_state_patch(response: dict) -> dict:
         if origin_source == "free_text_place":
             shortlist["origin_label"] = str(location_data.get("origin_label") or "")
         state["location_result"] = shortlist
-    return {key: value for key, value in state.items() if value not in (None, "", [], {})}
+    patch = {key: value for key, value in state.items() if value not in (None, "", [], {})}
+    if completed_search:
+        # A completed current result replaces these active fields, even when
+        # empty. Other callers still get the store's ordinary shallow merge.
+        # Place/origin continuity and historical conversation turns are separate.
+        patch.update({
+            "travel_mode": state["travel_mode"],
+            "max_travel_time_min": parsed.get("max_travel_time_min"),
+            "priorities": state["priorities"],
+            "previous_menu_item_ids": previous_ids,
+            "location_result": (shortlist if shortlist["selected_centres"] else
+                                {"selected_centres": [], "logistics": []}),
+        })
+    return patch
 
 
 def _resolve_session(payload: dict) -> tuple[Optional[str], dict]:
@@ -270,23 +295,32 @@ def _execute_and_trace(
             reply_chars=len(response.get("reply") or ""),
         )
         timestamp_end = _now_iso()
-        save_trace({
-            "request_id": request_id,
-            "timestamp_start": timestamp_start,
-            "timestamp_end": timestamp_end,
-            "timestamp": timestamp_end,
-            "status": "location_required" if response.get("needs_location") else "success",
-            "duration_ms": round((monotonic() - started) * 1000),
-            "metadata": {
-                "model": "gpt-4o",
-                "environment": os.getenv("APP_ENV", "development"),
-                "endpoint": endpoint,
-                "workflow_type": "smarthawker_orchestrator",
-            },
-            "user_query": message,
-            "events": events,
-            "response": response,
-        })
+        try:
+            save_trace({
+                "request_id": request_id,
+                "timestamp_start": timestamp_start,
+                "timestamp_end": timestamp_end,
+                "timestamp": timestamp_end,
+                "status": "location_required" if response.get("needs_location") else "success",
+                "duration_ms": round((monotonic() - started) * 1000),
+                "metadata": {
+                    "model": "gpt-4o",
+                    "environment": os.getenv("APP_ENV", "development"),
+                    "endpoint": endpoint,
+                    "workflow_type": "smarthawker_orchestrator",
+                },
+                "user_query": message,
+                "events": events,
+                "response": response,
+            })
+        except (sqlite3.ProgrammingError, sqlite3.InterfaceError,
+                sqlite3.IntegrityError, sqlite3.NotSupportedError):
+            raise
+        except (OSError, sqlite3.DatabaseError) as error:
+            # Optional persistence must not discard a successful response or
+            # prevent the independent session updates below. Never log payloads
+            # or provider/storage exception messages here.
+            log_activity(request_id, "trace.save_failed", error_type=type(error).__name__)
         _append_session_turn(
             session_id, "assistant", response.get("reply") or "", request_id,
         )
@@ -319,7 +353,9 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
     raw_message = payload.get("message")
     if raw_message is not None and not isinstance(raw_message, str):
         return jsonify({"error": "Message must be text."}), 400
@@ -488,7 +524,9 @@ def menu_lookup():
 @app.route("/api/location", methods=["POST"])
 def evaluate_location():
     """Expose the Location & Logistics worker directly for diagnostics."""
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
     if "request" not in payload:
         payload["request"] = payload.get("message", payload.get("task", ""))
     if not isinstance(payload.get("request"), str):
