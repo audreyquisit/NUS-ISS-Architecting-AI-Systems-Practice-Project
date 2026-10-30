@@ -217,7 +217,8 @@ class OrchestratorQueueRoutingTests(unittest.TestCase):
         )
 
         self.assertIn("couldn't find queue estimates", reply)
-        self.assertIn("not a live service", reply)
+        self.assertIn("No verified provider evidence", reply)
+        self.assertNotIn("simulated", reply)
 
     def test_google_places_queue_answer_is_caveated_and_not_called_simulated(self):
         reply = _queue_status_response(

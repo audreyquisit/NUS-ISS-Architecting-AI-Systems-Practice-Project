@@ -13,6 +13,14 @@ _TRACE_NAME = re.compile(r"^(\d{6})_(\d{6})__([0-9a-f-]{36})\.json$", re.I)
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _PHONE = re.compile(r"(?<!\w)(?:\+?65[ -]?)?[689]\d{3}[ -]?\d{4}(?!\w)")
 _COORD_PAIR = re.compile(r"(?<!\d)-?\d{1,2}\.\d{4,},\s*-?\d{2,3}\.\d{4,}(?!\d)")
+# Match each explicitly labelled component independently, including partial
+# pairs and JSON-like text. Consume malformed decimal tokens too rather than
+# retaining a precise numeric suffix. Unlabelled numbers are unaffected.
+_LABELLED_COORDINATE = re.compile(
+    r"(?P<prefix>(?<!\w)[\"']?(?:latitude|longitude|lat|lon|lng)\b[\"']?\s*[:=]\s*[\"']?)"
+    r"[+-]?\s*[0-9.]+(?:[eE][ \t]*[+-]?[ \t]*[0-9.]*)?",
+    re.I,
+)
 _STREET_ADDRESS = re.compile(
     r"\b\d{1,5}\s+[\w .'-]{1,60}\b(?:road|rd|street|st|avenue|ave|drive|dr|lane|ln|"
     r"way|close|crescent|cres|terrace|walk)\b",
@@ -23,7 +31,8 @@ _SECRET_KEY = re.compile(r"token|password|authorization|api.?key|secret|credenti
 
 
 def _safe_text(value: str, limit: int = 2000) -> str:
-    text = _EMAIL.sub("[REDACTED_EMAIL]", value)
+    text = _LABELLED_COORDINATE.sub(r"\g<prefix>[REDACTED_COORDINATE]", value)
+    text = _EMAIL.sub("[REDACTED_EMAIL]", text)
     text = _PHONE.sub("[REDACTED_PHONE]", text)
     text = _COORD_PAIR.sub("[REDACTED_COORDINATES]", text)
     text = _STREET_ADDRESS.sub("[REDACTED_ADDRESS]", text)

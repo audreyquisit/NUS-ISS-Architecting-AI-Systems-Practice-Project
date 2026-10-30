@@ -58,6 +58,14 @@ def _llm() -> ChatOpenAI:
     )
 
 
+def _queue_feed_sources(feed) -> list[str]:
+    """Keep provider metadata before filtering/copying away an empty feed."""
+    metadata = getattr(feed, "data_sources", ())
+    sources = set(metadata) if isinstance(metadata, (tuple, list)) else set()
+    sources.update(item.get("source") for item in feed if item.get("source"))
+    return sorted(sources)
+
+
 def _rank_candidates(
     task: str,
     user_request: Optional[str],
@@ -142,10 +150,9 @@ def _agentic_queue_plan(
                 "candidate_count": 0,
             })
             return "No requested centres matched the allowed shortlist."
-        records = [dict(item) for item in get_live_queue_feed(task=lookup_query)]
-        state["data_sources"] = sorted({
-            str(item.get("source")) for item in records if item.get("source")
-        })
+        feed = get_live_queue_feed(task=lookup_query)
+        state["data_sources"] = _queue_feed_sources(feed)
+        records = [dict(item) for item in feed]
         if selected_centres:
             records = [
                 item for item in records
@@ -431,7 +438,9 @@ def run(
         query = " ".join(filter(None, [
             task, user_request, str(context.get("requested_area") or "")
         ]))
-        queue_data = [dict(item) for item in get_live_queue_feed(task=query)]
+        feed = get_live_queue_feed(task=query)
+        fallback_sources = _queue_feed_sources(feed)
+        queue_data = [dict(item) for item in feed]
         if candidate_centres:
             queue_data = [
                 item for item in queue_data
@@ -454,7 +463,7 @@ def run(
                     item.get("stall_name", ""), item["hawker_centre_id"]
                 )
             item["_agent_candidate_id"] = f"queue-{index}"
-        queue_trace.append({"tool": "deterministic_fallback_lookup"})
+        queue_trace.append({"tool": "deterministic_fallback_lookup", "data_sources": fallback_sources})
         agentic = False
 
     sources = {item.get("source") for item in queue_data if item.get("source")}
@@ -464,11 +473,14 @@ def run(
         for source in event.get("data_sources", [])
     )
     uses_google_places = "google_places" in sources
-    limitations = [
-        "Google Places supplies live place metadata, not observed queues; queue values are popularity-based proxies, not stall-specific wait times."
-        if uses_google_places else
-        "Queue values are mock lookup data; scenario estimates are simulated, not live observations."
-    ]
+    uses_simulated = bool(sources & {"synthetic_queue_mock", "mock_queue_feed"})
+    limitations = []
+    if uses_google_places:
+        limitations.append("Google Places supplies live place metadata, not observed queues; queue values are popularity-based proxies, not stall-specific wait times.")
+    if uses_simulated:
+        limitations.append("Queue values are mock lookup data; scenario estimates are simulated, not live observations.")
+    if not sources:
+        limitations.append("No provider provenance was returned; no observed queue information is established.")
     if queue_limit is not None:
         before_limit = len(queue_data)
         queue_data = [
@@ -559,10 +571,11 @@ def run(
         "limitations": list(dict.fromkeys(limitations)),
         "evidence": [{
             "source": (
+                "mixed_queue_feed" if uses_google_places and uses_simulated else
                 "google_places" if uses_google_places else
                 "synthetic_queue_mock" if any(
                     item.get("queue_is_mock") for item in ranked
-                ) else "mock_queue_feed"
+                ) else "mock_queue_feed" if uses_simulated else "unavailable_queue_feed"
             ),
             "data_sources": sorted(sources),
             "candidate_count": len(ranked),

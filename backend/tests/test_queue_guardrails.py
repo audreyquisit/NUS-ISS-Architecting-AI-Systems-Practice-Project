@@ -43,6 +43,8 @@ class QueueGuardrailTests(unittest.TestCase):
                 "place_id": "places/chinatown-complex",
                 "queue_is_mock": False,
                 "queue_estimate_type": "popularity_proxy",
+                "record_type": "place",
+                "business_status": "OPERATIONAL",
             }],
         }
 
@@ -56,7 +58,7 @@ class QueueGuardrailTests(unittest.TestCase):
         )
         self.assertEqual(
             checked["verification"],
-            "Google place identity, catalogue centre match, proxy provenance, queue fields, and parsed hard limit checked",
+            "Google place identity, catalogue centre match, proxy provenance, queue fields, parsed hard limit, and applicable Location approval checked",
         )
 
     def test_verifier_rejects_google_place_proxy_for_unknown_centre(self):

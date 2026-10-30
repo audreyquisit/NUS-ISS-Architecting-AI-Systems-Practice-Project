@@ -1,6 +1,7 @@
 """Resolve conflicts between specialised agents by re-ranking joined candidates."""
 
 from functools import lru_cache
+import math
 from typing import Any
 
 from services.hawker_service import _menu_catalogue
@@ -50,11 +51,17 @@ def _menu_count_by_stall() -> dict[str, int]:
 
 
 def _score(candidate: dict[str, Any], weights: dict[str, float]) -> float:
-    price = candidate.get("price_sgd_min") or candidate.get("price_sgd_max") or 999.0
-    travel = (candidate.get("travel") or {}).get("total_duration_min") or 999.0
-    queue = candidate.get("queue_minutes") or 999.0
+    def metric(value, missing):
+        return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0 else missing
+
+    listed_price = candidate.get("price_sgd_min")
+    if listed_price is None:
+        listed_price = candidate.get("price_sgd_max")
+    price = metric(listed_price, 999.0)
+    travel = metric((candidate.get("travel") or {}).get("total_duration_min"), 999.0)
+    queue = metric(candidate.get("queue_minutes"), 999.0)
     dietary = 1.0 if candidate.get("dietary_suitable") is True else 0.5
-    weather = candidate.get("weather_score") or 0.5
+    weather = metric(candidate.get("weather_score"), 0.5)
 
     score = (
         weights["budget"] * max(0.0, 1.0 - price / 30.0)
@@ -80,9 +87,6 @@ def resolve_conflicts(
     parsed_request: dict[str, Any],
 ) -> list[dict[str, Any]]:
     priorities = parsed_request.get("priorities", [])
-    if not priorities:
-        return verified_results
-
     joined = next(
         (item for item in verified_results if item.get("agent") == "candidate_join"),
         None,
@@ -93,13 +97,13 @@ def resolve_conflicts(
     candidates = list(joined["candidates"])
     weights = _weights(priorities)
 
-    if all(v == 0.0 for v in weights.values()):
-        return verified_results
-
+    location = next((item.get("payload", {}) for item in verified_results if item.get("agent") == "location"), {})
+    centre_order = {item["centre_id"]: index for index, item in enumerate(location.get("selected_centres", []))}
+    # Location determines centre order. Food scores rank items only within a
+    # centre; there is no supported global food-first policy to infer here.
     scored = sorted(
         ((_score(candidate, weights), candidate) for candidate in candidates),
-        key=lambda pair: pair[0],
-        reverse=True,
+        key=lambda pair: (centre_order.get(pair[1].get("hawker_centre_id"), len(centre_order)), -pair[0]),
     )
     new_candidates = [candidate for _, candidate in scored]
 
@@ -109,8 +113,11 @@ def resolve_conflicts(
             updated[index] = {**item, "candidates": new_candidates}
             break
 
+    if all(value == 0.0 for value in weights.values()):
+        return updated
+
     note = (
-        "Re-ranked by priorities: "
+        "Preserved verified Location centre order; ranked menu items within each centre by priorities: "
         + ", ".join(priorities)
         + ". Weights applied: "
         + ", ".join(f"{k}={v:.2f}" for k, v in weights.items() if v > 0)

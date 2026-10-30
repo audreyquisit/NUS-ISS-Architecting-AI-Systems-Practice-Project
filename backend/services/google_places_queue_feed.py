@@ -12,6 +12,12 @@ GOOGLE_PLACES_FIELD_MASK = (
 )
 
 
+class _GoogleQueueFeed(list):
+    """List-compatible, request-local provenance, including successful empty lookups."""
+
+    data_sources = ("google_places",)
+
+
 def _normalise_queue_value(value: Any, default: int = 10) -> int:
     try:
         numeric = float(value)
@@ -32,21 +38,23 @@ def _crowd_level(queue_minutes: int) -> str:
     return "Very High"
 
 
-def _estimate_queue_minutes(result: Dict[str, Any]) -> int:
+def _estimate_queue_minutes(result: Dict[str, Any]) -> Optional[int]:
+    # Missing or closed operational evidence is not a zero-minute wait.
+    if result.get("businessStatus") != "OPERATIONAL":
+        return None
     rating = float(result.get("rating") or 0.0)
     total_ratings = int(result.get("userRatingCount") or 0)
-    business_status = str(result.get("businessStatus") or "OPERATIONAL")
     popularity_score = min(100.0, max(0.0, (rating * 18.0) + min(total_ratings, 500) / 10.0))
     queue_proxy = max(2, int(round(100 - popularity_score) / 4))
-    if business_status.upper() != "OPERATIONAL":
-        return 0
     return max(3, min(60, queue_proxy))
 
 
-def _map_place_result(result: Dict[str, Any]) -> Dict[str, Any]:
+def _map_place_result(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     display_name = result.get("displayName") or {}
     place_name = str(display_name.get("text") or "").strip()
     queue_minutes = _estimate_queue_minutes(result)
+    if queue_minutes is None:
+        return None
     queue_score = max(0, min(100, 100 - (queue_minutes * 3)))
     return {
         "stall_id": result.get("id") or f"google-place-{hash(place_name) % 1000000}",
@@ -69,6 +77,7 @@ def _map_place_result(result: Dict[str, Any]) -> Dict[str, Any]:
         "queue_mock_notice": "Google Places is used as a live place signal; queue minutes are an inferred proxy, not observed wait data.",
         "queue_estimate_type": "popularity_proxy",
         "record_type": "place",
+        "business_status": result["businessStatus"],
         "is_mock": False,
         "data_origin": "google_places",
         "place_id": result.get("id"),
@@ -106,14 +115,13 @@ def get_live_queue_feed(task: Optional[str] = None) -> List[dict]:
         return get_mock_queue_feed(task)
 
     results = payload.get("places") or []
-    if not results:
-        return get_mock_queue_feed(task)
-
-    queue_records = []
+    queue_records = _GoogleQueueFeed()
     for result in results[:10]:
         display_name = result.get("displayName") or {}
         place_name = str(display_name.get("text") or "").strip()
         if not place_name:
             continue
-        queue_records.append(_map_place_result(result))
+        record = _map_place_result(result)
+        if record is not None:
+            queue_records.append(record)
     return queue_records

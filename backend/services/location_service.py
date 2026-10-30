@@ -432,7 +432,9 @@ def get_route(
             raise LocationServiceError("OneMap returned itineraries without travel durations.")
         fastest = min(usable_itineraries, key=lambda item: _duration_seconds(item))
         total_seconds = _duration_seconds(fastest)
-        legs = fastest.get("legs", [])
+        legs = fastest.get("legs")
+        if not isinstance(legs, list) or any(not isinstance(leg, dict) for leg in legs):
+            legs = []  # Duration may be usable even when leg evidence is absent.
         if walking_distance is None:
             walking_distance = sum(
                 _number(leg.get("distance")) or 0
@@ -496,9 +498,14 @@ def _summarize_legs(legs: List[Dict[str, Any]]) -> Optional[str]:
     return " → ".join(modes) or None
 
 
-def _transfer_count(legs: List[Dict[str, Any]]) -> int:
+def _transfer_count(legs: List[Dict[str, Any]]) -> Optional[int]:
+    if not legs or any(
+        not isinstance(leg, dict) or not isinstance(leg.get("mode"), str)
+        or not leg["mode"].strip() for leg in legs
+    ):
+        return None
     transit_legs = [
         leg for leg in legs
-        if str(leg.get("mode", "")).casefold() not in {"walk", "walking", ""}
+        if leg["mode"].strip().casefold() not in {"walk", "walking"}
     ]
     return max(0, len(transit_legs) - 1)
